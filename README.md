@@ -4,7 +4,7 @@ RxE for the Next.js version of EmeraldChat (`emeraldchat.com/app/*`). The
 original [RxE](../RxE) keeps handling the old Rails app at `/old/app/*`. This
 project does not run there.
 
-The design, the feature API and the decisions behind both are in
+The design and the decisions behind it are in
 [docs/architecture.md](docs/architecture.md).
 
 ## Develop
@@ -12,7 +12,8 @@ The design, the feature API and the decisions behind both are in
 ```sh
 bun install
 bun run dev          # rebuild on change
-bun run check        # typecheck, tests, build
+bun run check        # lint, typecheck, tests, build
+bun run format       # apply Biome's safe fixes and formatting
 bun run build        # dist/extension (MV3) and dist/rxe-next.user.js
 ```
 
@@ -28,51 +29,102 @@ bun run build        # dist/extension (MV3) and dist/rxe-next.user.js
 
 ```
 src/
-  core/        feature runtime, Scope, defineFeature, settings storage
-  platform/    raw hooks: cable (WebSocket), webpack (module patcher), react, dom, route
-  site/        all EmeraldChat knowledge: domain model, wire formats, surfaces
-  ui/          React 19 + Base UI + shadcn + Tailwind, rendered in shadow roots
-  features/    one folder per feature
+  core/       feature runtime, Scope, settings schema and store, backup
+  platform/   raw hooks: cable (WebSocket), webpack (module patcher), react, dom, route
+  site/       all EmeraldChat knowledge: domain model, wire formats, tokens, surfaces
+  themes/     theme model, built-in themes, compiler, engine, wallpapers
+  ui/         React 19 + Base UI + shadcn + Tailwind, rendered in shadow roots
+  features/   one folder per feature
+lint/         GritQL rules for the design system, with fixtures proving they fire
 ```
 
 ## Writing a feature
 
-```ts
+```tsx
 import { defineFeature } from "@/core/feature";
-import { drop } from "@/site/surfaces/chat";
+import { setting } from "@/core/settings";
 
 export default defineFeature({
-  id: "mute-everywhere",
-  name: "Mute everywhere",
-  description: "…",
-  category: "chat",
-  setup({ chat, messages, site }) {
-    chat.incoming((event) =>
-      event.kind === "message" && site.mutes.has(event.author.id) ? drop : undefined
-    );
-    site.mutes.watch((ids) => messages.hideAuthors(ids));
+  id: "avatar-borders",
+  name: "Avatar borders",
+  description: "Rings avatars in the user's gender color.",
+  category: "appearance", // the settings tab it appears under
+  settings: {
+    style: setting.select({
+      label: "Style",
+      options: [{ value: "ring", label: "Ring" }, { value: "glow", label: "Glow" }],
+      default: "ring",
+    }),
+    width: setting.number({ label: "Thickness", min: 1, max: 4, step: 1, unit: "px", default: 2 }),
+  },
+  setup({ ui, settings }) {
+    settings.watch(({ style, width }) => ui.siteStyle("borders", css(style, width)));
   },
 });
 ```
 
 Then add it to `FEATURES` in `src/main.ts`.
 
-- Everything registered through the context is undone when the feature stops,
-  so features have no teardown code.
-- Features never touch selectors, cable frames or module source. If a feature
-  needs something the surfaces don't offer yet, add it to a surface in
-  `site/surfaces/`.
-- Raw `patches` are available as an escape hatch.
+- **Settings:** declare them with `setting.boolean`, `select`, `number` or
+  `text`. The panel renders the controls automatically. Values are typed from
+  the schema and validated on read.
+- **Teardown:** everything registered through the context (`chat`, `messages`,
+  `ui`, `site`, `settings.watch`) is undone when the feature stops. Features
+  write no teardown code.
+- **Site knowledge:** features never touch selectors, cable frames or module
+  source. If a feature needs something the surfaces don't offer, add it to a
+  surface in `site/surfaces/`.
 
-## UI
+| Surface | What a feature can do |
+|---|---|
+| `chat` | See every room event before the site does (domain `ChatEvent`s), and rewrite or `drop` them. Same for outgoing messages. |
+| `messages` | `renderText(renderer)` replaces how message text renders in group chat, DMs, text chat and video chat, via module patches. `hideAuthors(ids)`. `refresh()`. |
+| `ui` | `accountMenu.addItem`, `overlay(node)` for page-level UI, `siteStyle(id, css)` for site stylesheets (for example against `AVATAR_CLASSES`). |
+| `site` | Current user, muted users. |
 
-- RxE UI is React 19 with shadcn components (`base-nova` style, built on Base
-  UI), Tailwind v4 and Hugeicons.
-- Add components with `bun x shadcn add <name>`. They land in
-  `src/ui/components/ui/`.
-- Components that portal (dialogs, popovers, menus) must portal into
-  `usePortalContainer()`. See `dialog.tsx` for the pattern.
-- Every RxE component renders inside its own shadow root through
-  `ui/mount.tsx`. The single compiled stylesheet
-  (`ui/styles/rxe.tailwind.css`) is adopted into those roots only, so Tailwind
-  never reaches the site and the site's CSS never reaches RxE.
+## Design system
+
+All RxE UI uses one design system: shadcn components (`base-nova`, built on
+Base UI), Tailwind v4 and Hugeicons, themed by tokens. `bun run lint` enforces
+it with custom GritQL rules in `lint/`:
+
+- **No inline styles.** No JSX `style` props, no `element.style.*` writes, and
+  no `setAttribute("style")`. Dynamic colors go through generated stylesheets
+  keyed by data attributes. `features/settings/themes/previewStyles.ts` shows
+  the pattern.
+- **No hardcoded colors.** Hex values, `rgb()`/`oklch()`/`color-mix()`,
+  arbitrary Tailwind colors (`bg-[#fff]`, `bg-[var(--x)]`) and palette classes
+  (`text-white`) are all rejected, in TS and CSS alike.
+  - Tailwind's palette is switched off, so only semantic tokens exist:
+    `bg-card`, `text-primary`, `text-link`, `bg-mention` and so on.
+  - Colors may only be defined in `ui/styles/tokens.css`, `site/tokens.ts`
+    and `themes/builtin/`.
+- **Portals stay in the shadow root.** Every `*.Portal` must pass
+  `container={usePortalContainer()}`. New shadcn components with portals get
+  flagged until they do.
+
+`test/lint.test.ts` runs the rules against `lint/fixtures/` on every test run,
+so a rule that stops firing fails the build.
+
+Add components with `bun x shadcn add <name>`. They land in
+`src/ui/components/ui/`.
+
+## Themes
+
+A theme is data, validated with Valibot:
+
+- a base (dark or light)
+- overrides for any of the site's 72 tokens and RxE's 11
+- seeds for the editor's simple mode
+- a font stack
+- a wallpaper (URL, or an upload stored in IndexedDB)
+- glass panels
+- custom CSS
+
+`themes/compile.ts` turns a theme into one stylesheet on `:root:root`. The engine
+applies it at `document_start`, so the first paint is already themed. RxE's own
+UI derives its colors from the same tokens.
+
+About a quarter of the site's color rules hardcode values. Where a value equals
+a token's default, `themes/tokenizer.ts` rewrites it to `var(--token)`, matched
+by role. It works on any selector and survives site deploys.

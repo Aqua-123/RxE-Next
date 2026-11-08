@@ -1,7 +1,7 @@
 # RxE Next: architecture and feature API (proposal)
 
-Status: proposal for review. Nothing below is implemented yet except where noted
-as "exists today".
+Status: approved and largely implemented. The "Decisions" and "Implementation notes" sections
+at the end record what changed while building it.
 
 ## Problem
 
@@ -414,3 +414,23 @@ Build `platform/webpack.ts` (chunk interception and the find/replace patcher),
 then `site/surfaces/chat.ts` on top of the existing cable tap, and port
 `mute-everywhere` to `setup({ chat, site })` as the first feature on the new
 API.
+
+## Implementation notes
+
+- **Linting:** Biome, not ESLint. TypeScript 7 (the native port) ships no JS
+  compiler API, which `typescript-eslint` requires. The design-system rules are
+  GritQL plugins in `lint/`, with fixtures tested in `test/lint.test.ts`.
+- **Validation:** Valibot, not Zod. Zod 4 doesn't tree-shake under esbuild: a
+  single `z.object` bundled to 427 KB, against 3 KB for Valibot.
+- **Patches:**
+  - Surface patches can target several modules with `all: true`; the message
+    text patch matches group chat, DMs and text chat.
+  - Avatar decoration is class-based (`AVATAR_CLASSES`). The patched `Avatar`
+    always tags users, and features only add stylesheets, so toggling is live
+    even though `Avatar` is memoized.
+- **Message text:** `messages.renderText` mounts an RxE React root inside the
+  site's message cell. That happens only when a renderer actually changes the
+  message; plain messages stay plain text nodes.
+- **Hardcoded site colors:** handled at runtime by `themes/tokenizer.ts`, not
+  by a maintained `fixes.global.css`. The tokenizer matches values to token
+  defaults by role, so it needs no selectors.

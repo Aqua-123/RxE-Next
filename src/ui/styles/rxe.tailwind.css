@@ -80,11 +80,12 @@
   }
 }
 
+/*
+ * Hosts set no color or font: inline RxE UI (message text, menu items) inherits the
+ * site's, and overlays set their own through components (e.g. text-popover-foreground).
+ */
 @layer base {
   * {
     @apply border-border outline-ring/50;
-  }
-  :host {
-    @apply font-sans text-foreground;
   }
 }

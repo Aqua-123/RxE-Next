@@ -135,10 +135,13 @@ let textHost: ReturnType<typeof createTextHost> | undefined;
 const hooks = {
   text(value: unknown, group: unknown): unknown {
     if (typeof value !== "string" || renderers.size === 0) return value;
+    const message = { text: value, author: authorOf(group) };
+    // Plain messages stay plain text nodes; only messages a renderer changes get an RxE root.
+    if (renderMessageText(message) === value) return value;
     const react = siteReact();
     if (!react) return value;
     textHost ??= createTextHost(react);
-    return react.createElement(textHost, { text: value, author: authorOf(group) });
+    return react.createElement(textHost, message);
   },
   avatarClass(raw: unknown): string {
     const user = raw && typeof raw === "object" ? parseUser(raw) : null;
