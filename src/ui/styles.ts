@@ -1,28 +1,35 @@
+import css from "./styles/rxe.tailwind.css";
+
+const sheet = new CSSStyleSheet();
+sheet.replaceSync(css);
+
+function collectPropertyRules(rules: CSSRuleList, into: string[]): string[] {
+  for (const rule of rules) {
+    if (rule instanceof CSSPropertyRule) into.push(rule.cssText);
+    else if ("cssRules" in rule) collectPropertyRules((rule as CSSGroupingRule).cssRules, into);
+  }
+  return into;
+}
+
+let propertiesRegistered = false;
+
 /**
- * Every `*.module.css` registers its compiled CSS here when imported. All of it is
- * adopted into the document (for components mounted inside the site's DOM) and into
- * every RxE shadow root. Class names are hashed, so nothing leaks onto the site.
+ * Browsers ignore `@property` inside shadow roots, and Tailwind's shadow, ring and
+ * transform utilities depend on those registrations. Registering them on the
+ * document is global and styles nothing on the site.
  */
-const sheets = new Map<string, CSSStyleSheet>();
-const roots = new Set<Document | ShadowRoot>([document]);
-
-function adopt(root: Document | ShadowRoot): void {
-  const ours = new Set(sheets.values());
-  const foreign = root.adoptedStyleSheets.filter((sheet) => !ours.has(sheet));
-  root.adoptedStyleSheets = [...foreign, ...ours];
+function registerPropertiesOnDocument(): void {
+  if (propertiesRegistered) return;
+  propertiesRegistered = true;
+  const properties = new CSSStyleSheet();
+  properties.replaceSync(collectPropertyRules(sheet.cssRules, []).join("\n"));
+  document.adoptedStyleSheets = [...document.adoptedStyleSheets, properties];
 }
 
-export function registerStyles(id: string, css: string): void {
-  const sheet = sheets.get(id) ?? new CSSStyleSheet();
-  sheet.replaceSync(css);
-  sheets.set(id, sheet);
-  roots.forEach(adopt);
-}
-
-export function adoptStyles(root: ShadowRoot): () => void {
-  roots.add(root);
-  adopt(root);
-  return () => {
-    roots.delete(root);
-  };
+/** Gives a shadow root RxE's stylesheet. */
+export function adoptRxeStyles(root: ShadowRoot): void {
+  registerPropertiesOnDocument();
+  if (!root.adoptedStyleSheets.includes(sheet)) {
+    root.adoptedStyleSheets = [...root.adoptedStyleSheets, sheet];
+  }
 }

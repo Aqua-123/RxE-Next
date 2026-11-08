@@ -1,5 +1,5 @@
-import { watch } from "../../platform/dom";
-import { mountInline, mountIsolated } from "../../ui/mount";
+import { watch } from "@/platform/dom";
+import { mount } from "@/ui/mount";
 import { defineFeature } from "../feature";
 import { SettingsMenuItem } from "./SettingsMenuItem";
 import { SettingsPanel } from "./SettingsPanel";
@@ -24,7 +24,7 @@ export default defineFeature({
   locked: true,
   requires: ["bridge"],
   setup() {
-    const unmountPanel = mountIsolated(<SettingsPanel />);
+    const unmountPanel = mount(<SettingsPanel />, document.body, "append");
     const stopWatching = watch(ACCOUNT_MENU, (menu) => {
       const item = (
         <SettingsMenuItem
@@ -35,7 +35,7 @@ export default defineFeature({
         />
       );
       const logout = menu.querySelector(LOGOUT_ITEM);
-      return logout ? mountInline(item, logout, "before") : mountInline(item, menu, "append");
+      return logout ? mount(item, logout, "before") : mount(item, menu, "append");
     });
     return () => {
       stopWatching();
