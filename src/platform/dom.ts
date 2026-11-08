@@ -1,16 +1,30 @@
 import { attempt } from "./log";
 
-/** Creates or replaces a `<style>` owned by RxE. */
+/*
+ * RxE starts at document_start, when `document.documentElement` may not exist yet.
+ * Everything here works against `document` itself, which always does.
+ */
+
+const styles = new Map<string, CSSStyleSheet>();
+
+/**
+ * Creates or replaces a stylesheet RxE applies to the site. Adopted stylesheets
+ * need no DOM node, and they win cascade ties against the site's own sheets.
+ */
 export function injectStyle(id: string, css: string): () => void {
-  let style = document.querySelector<HTMLStyleElement>(`style[data-rxe="${id}"]`);
-  if (!style) {
-    style = document.createElement("style");
-    style.dataset.rxe = id;
-    (document.head ?? document.documentElement).append(style);
+  let sheet = styles.get(id);
+  if (!sheet) {
+    sheet = new CSSStyleSheet();
+    styles.set(id, sheet);
+    document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
   }
-  style.textContent = css;
-  const owned = style;
-  return () => owned.remove();
+  sheet.replaceSync(css);
+  const owned = sheet;
+  return () => {
+    if (styles.get(id) !== owned) return;
+    styles.delete(id);
+    document.adoptedStyleSheets = document.adoptedStyleSheets.filter((adopted) => adopted !== owned);
+  };
 }
 
 type Decorator = (element: Element) => (() => void) | void;
@@ -51,8 +65,10 @@ function scanAll(): void {
 export function watch(selector: string, decorate: Decorator): () => void {
   const watcher: Watcher = { selector, decorate, cleanups: new Map() };
   watchers.add(watcher);
-  observer ??= new MutationObserver(scanAll);
-  observer.observe(document.documentElement, { childList: true, subtree: true });
+  if (!observer) {
+    observer = new MutationObserver(scanAll);
+    observer.observe(document, { childList: true, subtree: true });
+  }
   scan(watcher);
   return () => {
     watchers.delete(watcher);

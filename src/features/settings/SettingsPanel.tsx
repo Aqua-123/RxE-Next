@@ -9,7 +9,7 @@ import {
 } from "@/ui/components/ui/dialog";
 import { Switch } from "@/ui/components/ui/switch";
 import { cn } from "@/ui/lib/utils";
-import { featureStatuses, setFeatureEnabled, type FeatureState, type FeatureStatus } from "../runner";
+import { featureStatuses, setFeatureEnabled, type FeatureState, type FeatureStatus } from "@/core/runtime";
 import { setSettingsOpen, settingsPanel } from "./state";
 
 function describe(state: FeatureState): string {
@@ -18,8 +18,10 @@ function describe(state: FeatureState): string {
       return "Running";
     case "off":
       return "Off";
-    case "waiting":
-      return `Idle: ${state.reason}`;
+    case "inactive":
+      return "Not active on this page";
+    case "reload-required":
+      return "Reload the page to apply";
     case "error":
       return `Error: ${state.message}`;
   }
@@ -73,7 +75,7 @@ export function SettingsPanel() {
         </DialogHeader>
         <ul className="flex max-h-[min(560px,70vh)] flex-col gap-2 overflow-y-auto px-5 pb-5">
           {statuses
-            .filter((status) => !status.locked)
+            .filter((status) => !status.core)
             .map((status) => (
               <FeatureRow key={status.id} status={status} />
             ))}

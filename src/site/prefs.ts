@@ -1,5 +1,5 @@
-import { attempt } from "../platform/log";
-import type { MutedUser } from "../types/site";
+import { attempt } from "@/platform/log";
+import type { UserId } from "./model";
 
 /**
  * The site's own preferences. Its preferences provider snapshots this key into
@@ -7,7 +7,8 @@ import type { MutedUser } from "../types/site";
  */
 const KEY = "emerald_preferences";
 
-export function parseMutedUsers(raw: string | null): MutedUser[] {
+/** Entries are `{ id, display_name, … }` objects; older data may hold bare ids. */
+export function parseMutedUserIds(raw: string | null): UserId[] {
   let list: unknown;
   try {
     list = raw ? JSON.parse(raw).muted_users : undefined;
@@ -16,25 +17,19 @@ export function parseMutedUsers(raw: string | null): MutedUser[] {
   }
   if (!Array.isArray(list)) return [];
   return list
-    .map((entry): MutedUser | undefined =>
-      typeof entry === "number"
-        ? { id: entry }
-        : entry && Number.isFinite(Number(entry.id))
-          ? { ...entry, id: Number(entry.id) }
-          : undefined
-    )
-    .filter((entry): entry is MutedUser => entry !== undefined);
+    .map((entry) => Number(typeof entry === "object" && entry !== null ? entry.id : entry))
+    .filter((id) => Number.isFinite(id) && id > 0) as UserId[];
 }
 
 let cachedRaw: string | null | undefined;
-let cachedIds: ReadonlySet<number> = new Set();
+let cachedIds: ReadonlySet<UserId> = new Set();
 
 /** Cheap enough to call per cable frame: re-parses only when the stored string changes. */
-export function mutedUserIds(): ReadonlySet<number> {
+export function mutedUserIds(): ReadonlySet<UserId> {
   const raw = localStorage.getItem(KEY);
   if (raw !== cachedRaw) {
     cachedRaw = raw;
-    cachedIds = new Set(parseMutedUsers(raw).map((user) => user.id));
+    cachedIds = new Set(parseMutedUserIds(raw));
   }
   return cachedIds;
 }

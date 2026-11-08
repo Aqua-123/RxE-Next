@@ -161,10 +161,12 @@ src/
     dom.ts                watch / injectStyle (exists)
     route.ts              History API tap (exists)
   site/                   all EmeraldChat knowledge, and nothing else
-    model.ts              domain types: User, ChatMessage, Room, …
-    channels.ts           cable frames ⇄ domain events (RoomChannel, MatchChannel, …)
-    api.ts                REST endpoints ⇄ domain types
-    contexts.ts           typed context shapes (auth, prefs, popups, groupChat)
+    model.ts              domain types: User, ChatEvent, OutgoingMessage, branded ids
+    wire.ts               wire formats ⇄ domain types (users, RoomChannel frames, speak)
+    api.ts                SiteApi: current user, mutes (REST endpoints to come)
+    context.ts            assembles a feature's scoped FeatureContext
+    contexts.ts           typed React context shapes (auth, prefs, cable, groupChat)
+    prefs.ts              the site's emerald_preferences (muted users)
     tokens.ts             the site's 64 design tokens, labelled and grouped for the theme editor
     surfaces/             extension points; each owns its patches, selectors and fallbacks
       chat.ts             incoming / outgoing chat pipeline
@@ -380,21 +382,24 @@ hooks. This is roughly today's shape.
 - **Borrow the site's React for RxE UI.** Rejected earlier: it ties RxE to the
   site's React version and module ids, and the site's CSS leaks in.
 
-## Open questions and risks
+## Decisions (from review)
 
-1. **Settings panel layout.** One scrolling list grouped by category, or a
-   sidebar with tabs (Chat, Appearance, Profiles, Moderation, Themes, Backup)?
-2. **Moderation tools.** Gate them with `when: (env) => env.user.mod`, so
-   non-mods never see them? Nobody on our side can test mod surfaces with a mod
-   account. Should they wait until someone can?
-3. **Built-in themes.** Which should ship at launch? Ports of ritsu, light,
-   teriblast and teriblast v2, or a fresh set?
-4. **Wallpapers.** Image URLs only, or also uploading a local image? Uploads
-   would be stored as data URLs in localStorage, which is limited to about 5 MB.
-5. **Risk: deploy cadence.** Surface patches will break on some deploys.
-   Proposal: a CI job that loads the live site daily, runs every `find` and
-   `match`, and opens an issue listing anything that no longer matches.
-6. **Risk: userscript managers that inject late.** Module patches need
+- **Shape:** approved as proposed.
+- **Settings panel:** a sidebar with tabs: Chat, Appearance, Profiles,
+  Moderation, Themes, Backup.
+- **Moderation tools:** gated with `when: (env) => env.user.mod`. Built later,
+  once someone with a mod account can test them.
+- **Built-in themes:** ports of ritsu, light, teriblast and teriblast v2, plus a
+  fresh set designed for the token system.
+- **Wallpapers:** an image URL or a local upload. Uploads are stored in
+  IndexedDB, not localStorage.
+
+## Risks
+
+1. **Deploy cadence.** Surface patches will break on some deploys. Proposal: a
+   CI job that loads the live site daily, runs every `find` and `match`, and
+   opens an issue listing anything that no longer matches.
+2. **Userscript managers that inject late.** Module patches need
    `document_start`. Late injection already falls back for the cable layer; for
    patches it means surfaces fall back to DOM, or the feature reports "reload
    required".

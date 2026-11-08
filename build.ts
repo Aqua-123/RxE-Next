@@ -45,6 +45,7 @@ const userscriptHeader = [
   ...MATCHES.map((pattern) => `// @match        ${pattern}`),
   ...EXCLUDES.map((pattern) => `// @exclude      ${pattern}`),
   "// @run-at       document-start",
+  "// @noframes",
   "// @grant        none",
   "// ==/UserScript==",
   "",

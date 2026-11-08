@@ -1,53 +1,42 @@
+import { registerFeatures, updateEnvironment } from "./core/runtime";
 import muteEverywhere from "./features/mute-everywhere";
-import { evaluateFeatures, registerFeatures } from "./features/runner";
 import settings from "./features/settings";
 import { META } from "./meta";
-import { siteContext } from "./platform/bridge";
 import { adoptTransport, cable, installCableTap } from "./platform/cable";
 import { log } from "./platform/log";
-import { installRouteTap, onRouteChange } from "./platform/route";
+import { currentPath, installRouteTap, onRouteChange } from "./platform/route";
+import { installWebpackTap } from "./platform/webpack";
+import { currentUser } from "./site/api";
+import { siteContext, whenSiteMounted } from "./site/contexts";
+import { installChatSurface } from "./site/surfaces/chat";
 
 const FEATURES = [muteEverywhere, settings];
 
-/** Re-evaluates features on every DOM change until the React tree has mounted. */
-function whenSiteMounted(callback: () => void): void {
-  let scheduled = false;
-  const check = (): boolean => {
-    if (!siteContext("auth")) return false;
-    observer.disconnect();
-    callback();
-    return true;
-  };
-  const observer = new MutationObserver(() => {
-    if (scheduled) return;
-    scheduled = true;
-    requestAnimationFrame(() => {
-      scheduled = false;
-      check();
-    });
-  });
-  if (!check()) observer.observe(document.documentElement, { childList: true, subtree: true });
-}
-
 function boot(): void {
-  // Must run before any site script: the cable socket is created once auth resolves.
+  // All taps must be in place before any site script runs.
+  installWebpackTap();
   installCableTap();
   installRouteTap();
-  registerFeatures(FEATURES);
-  evaluateFeatures();
+  installChatSurface();
 
+  // Registers raw patches synchronously, before the site's chunks load.
+  registerFeatures(FEATURES);
+  updateEnvironment({ path: currentPath() });
+
+  onRouteChange((path) => updateEnvironment({ path }));
   whenSiteMounted(() => {
     const transport = siteContext("cable")?.cable.transport;
     if (!cable.attached && transport) adoptTransport(transport);
-    evaluateFeatures();
+    updateEnvironment({ user: currentUser() });
   });
-  onRouteChange(evaluateFeatures);
   log.info(`${META.name} ${META.version} loaded`);
 }
 
 const flag = "__RXE_NEXT_LOADED__";
 const onOldSite = location.pathname.startsWith("/old/");
-if (!onOldSite && !(flag in globalThis)) {
+// Userscript managers also inject into iframes (Turnstile, Stripe, ads); RxE only belongs in the app itself.
+const isTopFrame = window.top === window;
+if (isTopFrame && !onOldSite && !(flag in globalThis)) {
   Object.defineProperty(globalThis, flag, { value: true });
   boot();
 }
