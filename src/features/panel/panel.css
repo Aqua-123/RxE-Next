@@ -1,0 +1,67 @@
+.rxe-panel-button {
+  align-self: center;
+  margin-right: 4px;
+}
+
+.rxe-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(440px, 80vw);
+  padding: 20px 24px;
+  box-sizing: border-box;
+  text-align: left;
+}
+
+.rxe-panel__header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.rxe-panel__header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.rxe-panel__header small {
+  opacity: 0.6;
+}
+
+.rxe-panel__features {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rxe-panel__feature label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rxe-panel__feature p,
+.rxe-panel__feature small {
+  margin: 4px 0 0 24px;
+}
+
+.rxe-panel__feature p {
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+.rxe-panel__feature small {
+  display: block;
+  font-size: 0.75rem;
+  opacity: 0.6;
+}
+
+.rxe-panel__feature small[data-state="error"] {
+  color: #ff6b6b;
+  opacity: 1;
+}

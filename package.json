@@ -1,0 +1,20 @@
+{
+  "name": "rxe-next",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "RxE for the Next.js version of EmeraldChat",
+  "scripts": {
+    "build": "bun build.ts",
+    "dev": "bun build.ts --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "check": "bun run typecheck && bun test && bun run build"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.4",
+    "@types/react": "18",
+    "esbuild": "^0.28.2",
+    "typescript": "^7.0.2"
+  }
+}
