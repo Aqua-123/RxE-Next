@@ -72,8 +72,11 @@ const options: BuildOptions = {
   format: "iife",
   target: "es2022",
   jsx: "automatic",
-  jsxImportSource: "preact",
-  define: { __RXE_VERSION__: JSON.stringify(pkg.version) },
+  jsxImportSource: "react",
+  define: {
+    __RXE_VERSION__: JSON.stringify(pkg.version),
+    "process.env.NODE_ENV": JSON.stringify(watchMode ? "development" : "production"),
+  },
   minify: !watchMode,
   sourcemap: watchMode ? "inline" : false,
   legalComments: "none",

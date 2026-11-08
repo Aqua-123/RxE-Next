@@ -1,4 +1,4 @@
-import { signal } from "@preact/signals";
+import { createStore } from "zustand/vanilla";
 import { store } from "../core/storage";
 import { siteContext } from "../platform/bridge";
 import { cable } from "../platform/cable";
@@ -35,7 +35,7 @@ interface Slot {
 const slots = new Map<string, Slot>();
 
 /** Live view of every feature, for UI. Updated whenever a feature starts, stops, or is toggled. */
-export const featureStatuses = signal<readonly FeatureStatus[]>([]);
+export const featureStatuses = createStore<readonly FeatureStatus[]>(() => []);
 
 const enabledKey = (feature: Feature) => `feature:${feature.id}`;
 
@@ -44,14 +44,17 @@ function isEnabled(feature: Feature): boolean {
 }
 
 function publish(): void {
-  featureStatuses.value = [...slots.values()].map(({ feature, state }) => ({
+  featureStatuses.setState(
+    [...slots.values()].map(({ feature, state }) => ({
     id: feature.id,
     name: feature.name,
     description: feature.description,
     locked: feature.locked ?? false,
-    enabled: isEnabled(feature),
-    state,
-  }));
+      enabled: isEnabled(feature),
+      state,
+    })),
+    true
+  );
 }
 
 function desiredState(feature: Feature): FeatureState {

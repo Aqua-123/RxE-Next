@@ -2,15 +2,26 @@
   position: fixed;
   inset: 0;
   z-index: 2147483000;
+  background: rgb(10 10 16 / 0.55);
+  backdrop-filter: blur(6px);
+  transition: opacity 180ms var(--rxe-ease-out);
+
+  &[data-starting-style],
+  &[data-ending-style] {
+    opacity: 0;
+  }
+}
+
+.viewport {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483001;
   display: grid;
   place-items: center;
   padding: 24px;
-  background: rgb(10 10 16 / 0.55);
-  backdrop-filter: blur(6px);
-  animation: fade 180ms var(--rxe-ease-out, ease-out);
 }
 
-.dialog {
+.popup {
   display: flex;
   flex-direction: column;
   width: min(520px, 100%);
@@ -23,11 +34,20 @@
     0 0 0 1px rgb(184 156 255 / 0.08);
   outline: none;
   overflow: hidden;
-  animation: rise 220ms var(--rxe-ease-out);
+  transition:
+    opacity 200ms var(--rxe-ease-out),
+    transform 200ms var(--rxe-ease-out);
+
+  &[data-starting-style],
+  &[data-ending-style] {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
 
   /* Hairline of accent along the top edge. */
   &::before {
     content: "";
+    flex: none;
     height: 2px;
     background: var(--rxe-accent-gradient);
   }
@@ -73,22 +93,9 @@
   overflow-y: auto;
 }
 
-@keyframes fade {
-  from {
-    opacity: 0;
-  }
-}
-
-@keyframes rise {
-  from {
-    opacity: 0;
-    transform: translateY(8px) scale(0.98);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .backdrop,
-  .dialog {
-    animation: none;
+  .popup {
+    transition: none;
   }
 }

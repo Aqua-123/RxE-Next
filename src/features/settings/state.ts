@@ -1,3 +1,5 @@
-import { signal } from "@preact/signals";
+import { createStore } from "zustand/vanilla";
 
-export const settingsOpen = signal(false);
+export const settingsPanel = createStore<{ open: boolean }>(() => ({ open: false }));
+
+export const setSettingsOpen = (open: boolean) => settingsPanel.setState({ open });

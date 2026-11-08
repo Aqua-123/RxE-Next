@@ -1,10 +1,11 @@
+import { useStore } from "zustand";
 import { META } from "../../meta";
 import { Modal } from "../../ui/components/Modal";
 import { Shimmer } from "../../ui/components/Shimmer";
 import { Switch } from "../../ui/components/Switch";
 import { featureStatuses, setFeatureEnabled, type FeatureState, type FeatureStatus } from "../runner";
 import styles from "./SettingsPanel.module.css";
-import { settingsOpen } from "./state";
+import { setSettingsOpen, settingsPanel } from "./state";
 
 function describe(state: FeatureState): string {
   switch (state.kind) {
@@ -28,7 +29,7 @@ function FeatureRow({ status }: { status: FeatureStatus }) {
       </span>
       <Switch
         checked={status.enabled}
-        onChange={(enabled) => setFeatureEnabled(status.id, enabled)}
+        onCheckedChange={(enabled) => setFeatureEnabled(status.id, enabled)}
         labelledBy={nameId}
         describedBy={`${nameId}-description`}
       />
@@ -42,16 +43,13 @@ function FeatureRow({ status }: { status: FeatureStatus }) {
   );
 }
 
-const close = () => {
-  settingsOpen.value = false;
-};
-
 export function SettingsPanel() {
-  const toggleable = featureStatuses.value.filter((status) => !status.locked);
+  const open = useStore(settingsPanel, (state) => state.open);
+  const statuses = useStore(featureStatuses);
   return (
     <Modal
-      open={settingsOpen.value}
-      onClose={close}
+      open={open}
+      onOpenChange={setSettingsOpen}
       title={
         <>
           <Shimmer>RxE</Shimmer> Settings
@@ -60,9 +58,11 @@ export function SettingsPanel() {
       }
     >
       <ul className={styles.features}>
-        {toggleable.map((status) => (
-          <FeatureRow key={status.id} status={status} />
-        ))}
+        {statuses
+          .filter((status) => !status.locked)
+          .map((status) => (
+            <FeatureRow key={status.id} status={status} />
+          ))}
       </ul>
     </Modal>
   );

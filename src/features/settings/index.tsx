@@ -3,7 +3,7 @@ import { mountInline, mountIsolated } from "../../ui/mount";
 import { defineFeature } from "../feature";
 import { SettingsMenuItem } from "./SettingsMenuItem";
 import { SettingsPanel } from "./SettingsPanel";
-import { settingsOpen } from "./state";
+import { setSettingsOpen } from "./state";
 
 /** The account dropdown is only mounted while open; Logout is its one stably-named item. */
 const ACCOUNT_MENU = '[role="menu"]:has([data-sentry-component="LogoutBtn"])';
@@ -30,7 +30,7 @@ export default defineFeature({
         <SettingsMenuItem
           onSelect={() => {
             closeMenu(menu);
-            settingsOpen.value = true;
+            setSettingsOpen(true);
           }}
         />
       );
@@ -40,7 +40,7 @@ export default defineFeature({
     return () => {
       stopWatching();
       unmountPanel();
-      settingsOpen.value = false;
+      setSettingsOpen(false);
     };
   },
 });

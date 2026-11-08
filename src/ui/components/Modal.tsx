@@ -1,59 +1,35 @@
-import { clsx } from "clsx";
-import type { ComponentChildren } from "preact";
-import { useEffect, useId, useRef } from "preact/hooks";
+import { Dialog } from "@base-ui/react/dialog";
+import type { ReactNode } from "react";
 import { CloseIcon } from "../icons/CloseIcon";
-import tokens from "../tokens.module.css";
+import { usePortalContainer } from "../mount";
 import styles from "./Modal.module.css";
 
 interface ModalProps {
   open: boolean;
-  title: ComponentChildren;
-  onClose(): void;
-  children: ComponentChildren;
+  onOpenChange(open: boolean): void;
+  title: ReactNode;
+  children: ReactNode;
 }
 
-export function Modal({ open, title, onClose, children }: ModalProps) {
-  const titleId = useId();
-  const dialog = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const previousFocus = document.activeElement as HTMLElement | null;
-    dialog.current?.focus();
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      previousFocus?.focus();
-    };
-  }, [open, onClose]);
-
-  if (!open) return null;
+/** Base UI handles focus trapping, Escape, scroll lock and focus restore; this adds RxE's look. */
+export function Modal({ open, onOpenChange, title, children }: ModalProps) {
+  const container = usePortalContainer();
   return (
-    <div
-      className={clsx(tokens.root, styles.backdrop)}
-      onClick={(event) => event.target === event.currentTarget && onClose()}
-    >
-      <div
-        ref={dialog}
-        className={styles.dialog}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        tabIndex={-1}
-      >
-        <header className={styles.header}>
-          <h2 id={titleId} className={styles.title}>
-            {title}
-          </h2>
-          <button type="button" className={styles.close} onClick={onClose} aria-label="Close">
-            <CloseIcon />
-          </button>
-        </header>
-        <div className={styles.body}>{children}</div>
-      </div>
-    </div>
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      <Dialog.Portal container={container}>
+        <Dialog.Backdrop className={styles.backdrop} />
+        <Dialog.Viewport className={styles.viewport}>
+          <Dialog.Popup className={styles.popup}>
+            <header className={styles.header}>
+              <Dialog.Title className={styles.title}>{title}</Dialog.Title>
+              <Dialog.Close className={styles.close} aria-label="Close">
+                <CloseIcon />
+              </Dialog.Close>
+            </header>
+            <div className={styles.body}>{children}</div>
+          </Dialog.Popup>
+        </Dialog.Viewport>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }

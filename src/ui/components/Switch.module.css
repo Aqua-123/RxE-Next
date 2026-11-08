@@ -12,7 +12,7 @@
     background 180ms var(--rxe-ease-out),
     border-color 180ms var(--rxe-ease-out);
 
-  &[aria-checked="true"] {
+  &[data-checked] {
     border-color: transparent;
     background: var(--rxe-accent-gradient);
   }
@@ -22,7 +22,7 @@
     outline-offset: 2px;
   }
 
-  &:disabled {
+  &[data-disabled] {
     cursor: not-allowed;
     opacity: 0.5;
   }
@@ -39,7 +39,7 @@
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.35);
   transition: transform 180ms var(--rxe-ease-out);
 
-  .switch[aria-checked="true"] & {
+  &[data-checked] {
     transform: translateX(18px);
   }
 }

@@ -1,27 +1,26 @@
+import { Switch as BaseSwitch } from "@base-ui/react/switch";
 import styles from "./Switch.module.css";
 
 interface SwitchProps {
   checked: boolean;
-  onChange(checked: boolean): void;
+  onCheckedChange(checked: boolean): void;
   /** Id of the element that labels the switch. */
   labelledBy: string;
   describedBy?: string;
   disabled?: boolean;
 }
 
-export function Switch({ checked, onChange, labelledBy, describedBy, disabled }: SwitchProps) {
+export function Switch({ checked, onCheckedChange, labelledBy, describedBy, disabled }: SwitchProps) {
   return (
-    <button
-      type="button"
-      role="switch"
+    <BaseSwitch.Root
       className={styles.switch}
-      aria-checked={checked}
+      checked={checked}
+      onCheckedChange={onCheckedChange}
+      disabled={disabled}
       aria-labelledby={labelledBy}
       aria-describedby={describedBy}
-      disabled={disabled}
-      onClick={() => onChange(!checked)}
     >
-      <span className={styles.thumb} />
-    </button>
+      <BaseSwitch.Thumb className={styles.thumb} />
+    </BaseSwitch.Root>
   );
 }
