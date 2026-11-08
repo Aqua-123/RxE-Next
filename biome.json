@@ -6,13 +6,21 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**", "!dist", "!lint/fixtures"]
+    "includes": [
+      "**",
+      "!dist",
+      "!lint/fixtures"
+    ]
   },
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
     "indentWidth": 2,
-    "lineWidth": 100
+    "lineWidth": 100,
+    "includes": [
+      "**",
+      "!**/*.md"
+    ]
   },
   "javascript": {
     "formatter": {
@@ -48,24 +56,40 @@
   "plugins": [
     {
       "path": "./lint/no-inline-style.grit",
-      "includes": ["src/**"]
+      "includes": [
+        "src/**"
+      ]
     },
     {
       "path": "./lint/no-color-literals.grit",
-      "includes": ["src/**/*.ts", "src/**/*.tsx", "!src/site/tokens.ts", "!src/themes/builtin/**"]
+      "includes": [
+        "src/**/*.ts",
+        "src/**/*.tsx",
+        "!src/site/tokens.ts",
+        "!src/themes/builtin/**"
+      ]
     },
     {
       "path": "./lint/no-css-color-literals.grit",
-      "includes": ["src/**/*.css", "!src/ui/styles/tokens.css"]
+      "includes": [
+        "src/**/*.css",
+        "!src/ui/styles/tokens.css"
+      ]
     },
     {
       "path": "./lint/portal-into-shadow-root.grit",
-      "includes": ["src/**/*.tsx"]
+      "includes": [
+        "src/**/*.tsx"
+      ]
     }
   ],
   "overrides": [
     {
-      "includes": ["src/site/surfaces/**", "src/features/**", "test/webpack.test.ts"],
+      "includes": [
+        "src/site/surfaces/**",
+        "src/features/**",
+        "test/webpack.test.ts"
+      ],
       "linter": {
         "rules": {
           "complexity": {
@@ -75,7 +99,9 @@
       }
     },
     {
-      "includes": ["src/ui/components/ui/**"],
+      "includes": [
+        "src/ui/components/ui/**"
+      ],
       "linter": {
         "rules": {
           "suspicious": {
@@ -89,7 +115,9 @@
       }
     },
     {
-      "includes": ["test/**"],
+      "includes": [
+        "test/**"
+      ],
       "linter": {
         "rules": {
           "suspicious": {
