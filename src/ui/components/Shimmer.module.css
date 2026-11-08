@@ -1,0 +1,42 @@
+/*
+ * Lavender → pink → peach (the RxE logo palette) clipped to text. The gradient
+ * repeats every 50% of a 200%-wide image, so sliding it by one width loops seamlessly.
+ */
+.shimmer {
+  background-image: linear-gradient(
+    90deg,
+    #b89cff 0%,
+    #f4a6d7 12%,
+    #ffd1a1 22%,
+    #fff7ee 25%,
+    #ffd1a1 28%,
+    #f4a6d7 38%,
+    #b89cff 50%,
+    #f4a6d7 62%,
+    #ffd1a1 72%,
+    #fff7ee 75%,
+    #ffd1a1 78%,
+    #f4a6d7 88%,
+    #b89cff 100%
+  );
+  background-size: 200% 100%;
+  background-clip: text;
+  color: transparent;
+  animation: sweep 4s linear infinite;
+}
+
+@keyframes sweep {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shimmer {
+    animation: none;
+    background-position: 25% 0;
+  }
+}

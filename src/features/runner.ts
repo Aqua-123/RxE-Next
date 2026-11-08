@@ -1,15 +1,14 @@
+import { signal } from "@preact/signals";
 import { store } from "../core/storage";
 import { siteContext } from "../platform/bridge";
 import { cable } from "../platform/cable";
 import { attempt, log } from "../platform/log";
-import { siteReact } from "../platform/modules";
 import { currentPath } from "../platform/route";
 import type { Capability, Feature, Teardown } from "./feature";
 
 const CAPABILITIES: Record<Capability, () => boolean> = {
   cable: () => cable.attached,
   bridge: () => siteContext("auth") !== undefined,
-  react: () => siteReact() !== undefined,
 };
 
 export type FeatureState =
@@ -34,12 +33,25 @@ interface Slot {
 }
 
 const slots = new Map<string, Slot>();
-const statusListeners = new Set<() => void>();
+
+/** Live view of every feature, for UI. Updated whenever a feature starts, stops, or is toggled. */
+export const featureStatuses = signal<readonly FeatureStatus[]>([]);
 
 const enabledKey = (feature: Feature) => `feature:${feature.id}`;
 
 function isEnabled(feature: Feature): boolean {
   return feature.locked || store.get(enabledKey(feature), feature.defaultEnabled);
+}
+
+function publish(): void {
+  featureStatuses.value = [...slots.values()].map(({ feature, state }) => ({
+    id: feature.id,
+    name: feature.name,
+    description: feature.description,
+    locked: feature.locked ?? false,
+    enabled: isEnabled(feature),
+    state,
+  }));
 }
 
 function desiredState(feature: Feature): FeatureState {
@@ -69,26 +81,23 @@ function start(slot: Slot): FeatureState {
 
 /** Starts and stops features to match settings, route, and available capabilities. Idempotent. */
 export function evaluateFeatures(): void {
-  let changed = false;
   for (const slot of slots.values()) {
     const desired = desiredState(slot.feature);
-    let next = desired;
-    if (desired.kind === "running") {
-      if (slot.state.kind === "error") next = slot.state;
-      else if (!slot.teardown) next = start(slot);
-    } else {
+    if (desired.kind !== "running") {
       stop(slot);
+      slot.state = desired;
+    } else if (slot.state.kind !== "error" && !slot.teardown) {
+      slot.state = start(slot);
     }
-    if (JSON.stringify(next) !== JSON.stringify(slot.state)) changed = true;
-    slot.state = next;
   }
-  if (changed) statusListeners.forEach((listener) => attempt("status listener", listener));
+  publish();
 }
 
 export function registerFeatures(features: readonly Feature[]): void {
   for (const feature of features) {
     slots.set(feature.id, { feature, state: { kind: "off" } });
   }
+  publish();
 }
 
 export function setFeatureEnabled(id: string, enabled: boolean): void {
@@ -98,22 +107,4 @@ export function setFeatureEnabled(id: string, enabled: boolean): void {
   // Re-enabling is the way to retry a feature that errored.
   if (enabled && slot.state.kind === "error") slot.state = { kind: "off" };
   evaluateFeatures();
-}
-
-export function featureStatuses(): FeatureStatus[] {
-  return [...slots.values()].map(({ feature, state }) => ({
-    id: feature.id,
-    name: feature.name,
-    description: feature.description,
-    locked: feature.locked ?? false,
-    enabled: isEnabled(feature),
-    state,
-  }));
-}
-
-export function onFeatureStatusChange(listener: () => void): () => void {
-  statusListeners.add(listener);
-  return () => {
-    statusListeners.delete(listener);
-  };
 }

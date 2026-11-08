@@ -1,4 +1,4 @@
-export type Capability = "cable" | "bridge" | "react";
+export type Capability = "cable" | "bridge";
 
 export type Teardown = () => void;
 

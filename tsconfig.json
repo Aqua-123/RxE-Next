@@ -10,9 +10,8 @@
     "isolatedModules": true,
     "noEmit": true,
     "skipLibCheck": true,
-    "jsx": "react",
-    "jsxFactory": "h",
-    "jsxFragmentFactory": "Fragment"
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact"
   },
-  "include": ["src", "test", "build.ts"]
+  "include": ["src", "test", "scripts", "build.ts"]
 }

@@ -1,5 +1,6 @@
 import { build, context, type BuildOptions, type Plugin } from "esbuild";
 import { cp, readFile, rm, writeFile } from "node:fs/promises";
+import { cssPlugin } from "./scripts/css-plugin";
 
 const pkg = JSON.parse(await readFile("package.json", "utf8")) as {
   version: string;
@@ -70,13 +71,14 @@ const options: BuildOptions = {
   bundle: true,
   format: "iife",
   target: "es2022",
-  loader: { ".css": "text" },
+  jsx: "automatic",
+  jsxImportSource: "preact",
   define: { __RXE_VERSION__: JSON.stringify(pkg.version) },
   minify: !watchMode,
   sourcemap: watchMode ? "inline" : false,
   legalComments: "none",
   logLevel: "info",
-  plugins: [emitArtifacts],
+  plugins: [cssPlugin({ minify: !watchMode }), emitArtifacts],
 };
 
 await rm("dist", { recursive: true, force: true });

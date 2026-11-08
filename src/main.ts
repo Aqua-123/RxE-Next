@@ -1,13 +1,13 @@
 import muteEverywhere from "./features/mute-everywhere";
-import panel from "./features/panel";
 import { evaluateFeatures, registerFeatures } from "./features/runner";
+import settings from "./features/settings";
 import { META } from "./meta";
 import { siteContext } from "./platform/bridge";
 import { adoptTransport, cable, installCableTap } from "./platform/cable";
 import { log } from "./platform/log";
 import { installRouteTap, onRouteChange } from "./platform/route";
 
-const FEATURES = [muteEverywhere, panel];
+const FEATURES = [muteEverywhere, settings];
 
 /** Re-evaluates features on every DOM change until the React tree has mounted. */
 function whenSiteMounted(callback: () => void): void {
