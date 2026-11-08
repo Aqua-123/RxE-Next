@@ -7,15 +7,6 @@ import type { MutedUser } from "../types/site";
  */
 const KEY = "emerald_preferences";
 
-/** The site's defaults for a missing key, copied from its preferences provider. */
-const SITE_DEFAULTS = {
-  muted_audio: true,
-  volume: 0.5,
-  visual_notifications: true,
-  muted_users: [],
-  fast_skip: false,
-};
-
 export function parseMutedUsers(raw: string | null): MutedUser[] {
   let list: unknown;
   try {
@@ -46,25 +37,6 @@ export function mutedUserIds(): ReadonlySet<number> {
     cachedIds = new Set(parseMutedUsers(raw).map((user) => user.id));
   }
   return cachedIds;
-}
-
-export function mutedUsers(): MutedUser[] {
-  return parseMutedUsers(localStorage.getItem(KEY));
-}
-
-/**
- * Only safe before the site mounts: afterwards its provider would overwrite this
- * write with its in-memory state on the next preference change.
- */
-export function writeMutedUsersBeforeMount(users: MutedUser[]): void {
-  const raw = localStorage.getItem(KEY);
-  let prefs: Record<string, unknown> = { ...SITE_DEFAULTS };
-  try {
-    if (raw) prefs = JSON.parse(raw);
-  } catch {
-    // corrupt value: the site would fall back to its defaults too
-  }
-  localStorage.setItem(KEY, JSON.stringify({ ...prefs, muted_users: users }));
 }
 
 const listeners = new Set<() => void>();

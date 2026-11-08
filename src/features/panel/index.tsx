@@ -12,7 +12,8 @@ import {
 } from "../runner";
 import css from "./panel.css";
 
-const HEADER_ICONS = '[class*="Layout_event_container__"]';
+/** The gear dropdown is only mounted while open; Logout is its one stably-named item. */
+const ACCOUNT_MENU = '[role="menu"]:has([data-sentry-component="LogoutBtn"])';
 
 function describe(state: FeatureState): string {
   switch (state.kind) {
@@ -35,7 +36,7 @@ function Panel() {
   return (
     <div className="rxe-panel">
       <header className="rxe-panel__header">
-        <h2>{META.name}</h2>
+        <h2 className="rxe-shimmer">{META.name}</h2>
         <small>v{META.version}</small>
       </header>
       <ul className="rxe-panel__features">
@@ -69,25 +70,44 @@ function openPanel(): void {
   popups.openPopup({ content: <Panel />, classNames: ["rxe-popup"] });
 }
 
+/** Closes the dropdown through its own toggle so the site's open state stays in sync. */
+function closeMenu(menu: Element): void {
+  menu.parentElement
+    ?.querySelector<HTMLElement>(':scope > [role="button"][aria-expanded="true"]')
+    ?.click();
+}
+
+function addMenuItem(menu: Element): () => void {
+  const item = document.createElement("div");
+  item.className = "menuItem rxe-menu-item";
+  item.setAttribute("role", "menuitem");
+
+  const button = document.createElement("button");
+  button.className = "btn-basic";
+  button.innerHTML = '<span class="rxe-shimmer" aria-hidden="true">✦</span> <span class="rxe-shimmer">RxE Settings</span>';
+  button.setAttribute("aria-label", "RxE Settings");
+  button.addEventListener("click", () => {
+    closeMenu(menu);
+    openPanel();
+  });
+  item.append(button);
+
+  const logout = menu.querySelector('[data-sentry-component="LogoutBtn"]')?.closest(".menuItem");
+  menu.insertBefore(item, logout ?? null);
+  return () => item.remove();
+}
+
 export default defineFeature({
   id: "panel",
   name: "RxE panel",
-  description: "Adds an RxE button to the header that opens RxE settings.",
+  description: "Adds RxE Settings to the account menu.",
   defaultEnabled: true,
   locked: true,
   requires: ["bridge", "react"],
   routes: /^\/app(\/|$)/,
   setup() {
     const removeStyle = injectStyle("panel", css);
-    const stopWatching = watch(HEADER_ICONS, (icons) => {
-      const button = document.createElement("button");
-      button.className = "btn-basic btn-primary-solid btn-xsm rxe-panel-button";
-      button.textContent = "RxE";
-      button.setAttribute("aria-label", "Open RxE settings");
-      button.addEventListener("click", openPanel);
-      icons.prepend(button);
-      return () => button.remove();
-    });
+    const stopWatching = watch(ACCOUNT_MENU, addMenuItem);
     return () => {
       stopWatching();
       removeStyle();

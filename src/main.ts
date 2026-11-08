@@ -1,4 +1,3 @@
-import { installPublicApi } from "./api";
 import muteEverywhere from "./features/mute-everywhere";
 import panel from "./features/panel";
 import { evaluateFeatures, registerFeatures } from "./features/runner";
@@ -34,7 +33,6 @@ function boot(): void {
   // Must run before any site script: the cable socket is created once auth resolves.
   installCableTap();
   installRouteTap();
-  installPublicApi();
   registerFeatures(FEATURES);
   evaluateFeatures();
 

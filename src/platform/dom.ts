@@ -23,7 +23,6 @@ interface Watcher {
 
 const watchers = new Set<Watcher>();
 let observer: MutationObserver | undefined;
-let scheduled = false;
 
 function scan(watcher: Watcher): void {
   for (const [element, cleanup] of watcher.cleanups) {
@@ -39,13 +38,9 @@ function scan(watcher: Watcher): void {
   }
 }
 
-function scheduleScan(): void {
-  if (scheduled) return;
-  scheduled = true;
-  requestAnimationFrame(() => {
-    scheduled = false;
-    watchers.forEach(scan);
-  });
+/** Mutation callbacks run as microtasks before paint, so decorations never appear a frame late. */
+function scanAll(): void {
+  watchers.forEach(scan);
 }
 
 /**
@@ -56,7 +51,7 @@ function scheduleScan(): void {
 export function watch(selector: string, decorate: Decorator): () => void {
   const watcher: Watcher = { selector, decorate, cleanups: new Map() };
   watchers.add(watcher);
-  observer ??= new MutationObserver(scheduleScan);
+  observer ??= new MutationObserver(scanAll);
   observer.observe(document.documentElement, { childList: true, subtree: true });
   scan(watcher);
   return () => {
