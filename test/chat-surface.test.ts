@@ -40,7 +40,9 @@ beforeAll(installChatSurface);
 
 test("features see domain events and can drop them; disposing the scope removes the handler", () => {
   const scope = new Scope("test");
-  scopedChat(scope).incoming((event) => (event.kind === "message" && event.author.id === 2 ? drop : undefined));
+  scopedChat(scope).incoming((event) =>
+    event.kind === "message" && event.author.id === 2 ? drop : undefined
+  );
   const { socket, received } = connect();
 
   socket.receive(frame({ messages: ["spam"], user: user(2) }));
@@ -54,14 +56,22 @@ test("features see domain events and can drop them; disposing the scope removes 
 
 test("outgoing messages can be rewritten before they are sent", () => {
   const scope = new Scope("commands");
-  scopedChat(scope).outgoing((message) => ({ ...message, text: message.text.replace(".shrug", "¯\\_(ツ)_/¯") }));
+  scopedChat(scope).outgoing((message) => ({
+    ...message,
+    text: message.text.replace(".shrug", "¯\\_(ツ)_/¯"),
+  }));
   const { socket } = connect();
 
   (socket as unknown as WebSocket).send(
     JSON.stringify({
       command: "message",
       identifier,
-      data: JSON.stringify({ action: "speak", message: "ok .shrug", id: "channel97", mode: "channel" }),
+      data: JSON.stringify({
+        action: "speak",
+        message: "ok .shrug",
+        id: "channel97",
+        mode: "channel",
+      }),
     })
   );
   expect(JSON.parse(JSON.parse(socket.sent[0]!).data).message).toBe("ok ¯\\_(ツ)_/¯");

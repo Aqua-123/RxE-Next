@@ -1,5 +1,6 @@
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, type ReactNode, useContext } from "react";
 import { createRoot } from "react-dom/client";
+import { injectStyle } from "@/platform/dom";
 import { adoptRxeStyles } from "./styles";
 
 export type Placement = "before" | "after" | "prepend" | "append";
@@ -11,22 +12,43 @@ export function usePortalContainer(): ShadowRoot | null {
   return useContext(PortalContainer);
 }
 
+export interface MountedRoot {
+  render(node: ReactNode): void;
+  unmount(): void;
+}
+
+let hostStyleInstalled = false;
+
 /**
- * Renders RxE UI at a spot in the site's DOM, inside its own shadow root. The host
- * uses `display: contents`, so the component lays out as if the site had rendered
- * it and inherits the site's font, while RxE's styles and the site's never mix.
+ * Creates an RxE React root at a spot in the site's DOM, inside its own shadow root.
+ * Hosts lay out as `display: contents`, so components sit in the site's layout as if
+ * the site had rendered them and inherit its font, while RxE's styles and the site's
+ * never mix.
  */
-export function mount(node: ReactNode, anchor: Element, placement: Placement): () => void {
+export function mountRoot(anchor: Element, placement: Placement): MountedRoot {
+  if (!hostStyleInstalled) {
+    hostStyleInstalled = true;
+    injectStyle("rxe-hosts", "rxe-root,rxe-text{display:contents}");
+  }
   const host = document.createElement("rxe-root");
-  host.style.display = "contents";
   const shadow = host.attachShadow({ mode: "open" });
-  adoptRxeStyles(shadow);
+  const releaseStyles = adoptRxeStyles(shadow);
   anchor[placement](host);
 
   const root = createRoot(shadow);
-  root.render(<PortalContainer.Provider value={shadow}>{node}</PortalContainer.Provider>);
-  return () => {
-    root.unmount();
-    host.remove();
+  return {
+    render: (node) =>
+      root.render(<PortalContainer.Provider value={shadow}>{node}</PortalContainer.Provider>),
+    unmount() {
+      root.unmount();
+      releaseStyles();
+      host.remove();
+    },
   };
+}
+
+export function mount(node: ReactNode, anchor: Element, placement: Placement): () => void {
+  const root = mountRoot(anchor, placement);
+  root.render(node);
+  return root.unmount;
 }

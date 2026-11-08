@@ -1,5 +1,5 @@
-import { build, context, type BuildOptions, type Plugin } from "esbuild";
 import { cp, readFile, rm, writeFile } from "node:fs/promises";
+import { type BuildOptions, build, context, type Plugin } from "esbuild";
 import { cssPlugin } from "./scripts/css-plugin";
 
 const pkg = JSON.parse(await readFile("package.json", "utf8")) as {
@@ -21,7 +21,12 @@ const manifest = {
   name: NAME,
   version: pkg.version,
   description: pkg.description,
-  icons: { 16: "icons/logo-16.png", 32: "icons/logo-32.png", 48: "icons/logo-48.png", 128: "icons/logo-128.png" },
+  icons: {
+    16: "icons/logo-16.png",
+    32: "icons/logo-32.png",
+    48: "icons/logo-48.png",
+    128: "icons/logo-128.png",
+  },
   content_scripts: [
     {
       matches: MATCHES,

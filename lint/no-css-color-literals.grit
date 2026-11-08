@@ -1,0 +1,10 @@
+language css
+
+// Colors are only defined in token files (see biome.json includes). Everything else references tokens.
+`$prop: $value` as $decl where {
+  or {
+    $value <: r"(?s).*(?:#[0-9a-fA-F]{3,8}\b|\b(?:rgba?|hsla?|oklch|oklab|lab|lch|hwb|color-mix)\().*",
+    $value <: r"(?is)(?:.*\s)?(?:black|white|red|green|blue|yellow|orange|purple|pink|gray|grey|gold|silver|azure|navy|teal|maroon|olive|lime|aqua|fuchsia)(?:\s.*)?"
+  },
+  register_diagnostic(span=$decl, message="No hardcoded colors in CSS. Reference a theme token with var(--…).")
+}

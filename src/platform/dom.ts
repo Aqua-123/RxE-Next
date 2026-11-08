@@ -23,11 +23,13 @@ export function injectStyle(id: string, css: string): () => void {
   return () => {
     if (styles.get(id) !== owned) return;
     styles.delete(id);
-    document.adoptedStyleSheets = document.adoptedStyleSheets.filter((adopted) => adopted !== owned);
+    document.adoptedStyleSheets = document.adoptedStyleSheets.filter(
+      (adopted) => adopted !== owned
+    );
   };
 }
 
-type Decorator = (element: Element) => (() => void) | void;
+type Decorator = (element: Element) => (() => void) | undefined;
 
 interface Watcher {
   selector: string;
@@ -72,7 +74,7 @@ export function watch(selector: string, decorate: Decorator): () => void {
   scan(watcher);
   return () => {
     watchers.delete(watcher);
-    watcher.cleanups.forEach((cleanup) => attempt("dom cleanup", cleanup));
+    for (const cleanup of watcher.cleanups.values()) attempt("dom cleanup", cleanup);
     watcher.cleanups.clear();
     if (watchers.size === 0) {
       observer?.disconnect();

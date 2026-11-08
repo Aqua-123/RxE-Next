@@ -1,0 +1,9 @@
+// Colors are only defined in token files (see biome.json includes). Everything else references tokens.
+or {
+  JsStringLiteralExpression() as $lit,
+  JsTemplateChunkElement() as $lit,
+  JsxString() as $lit
+} where {
+  $lit <: r"(?s).*(?:#[0-9a-fA-F]{3,8}\b|\b(?:rgba?|hsla?|oklch|oklab|lab|lch|hwb|color-mix)\(|\[var\(--|\b(?:bg|text|border|ring|fill|stroke|from|via|to|outline|decoration|accent|caret|divide|shadow)-(?:black|white|slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)\b).*",
+  register_diagnostic(span=$lit, message="No hardcoded colors. Use a theme token: a semantic class (bg-card, text-primary) or var(--…) defined in a token file.")
+}

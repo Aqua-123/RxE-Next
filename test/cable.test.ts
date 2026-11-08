@@ -28,7 +28,7 @@ class FakeSocket {
   receive(data: string) {
     const event = new MessageEvent("message", { data });
     this.#onmessage?.call(this, event);
-    this.listeners.forEach((listener) => listener(event));
+    for (const listener of this.listeners) listener(event);
   }
 }
 
@@ -54,7 +54,9 @@ function hookedSocket() {
 }
 
 const cleanups: Array<() => void> = [];
-afterEach(() => cleanups.splice(0).forEach((cleanup) => cleanup()));
+afterEach(() => {
+  for (const cleanup of cleanups.splice(0)) cleanup();
+});
 
 describe("incoming frames", () => {
   test("pass through untouched without handlers", () => {
@@ -65,7 +67,11 @@ describe("incoming frames", () => {
 
   test("handler assigned after hooking still gets filtered frames", () => {
     const { socket, received } = hookedSocket();
-    cleanups.push(cable.onIncoming(({ message }) => (message.user?.id === 2 ? "drop" : undefined)));
+    cleanups.push(
+      cable.onIncoming(({ message }) =>
+        (message.user as { id?: number } | undefined)?.id === 2 ? "drop" : undefined
+      )
+    );
     socket.receive(roomFrame({ messages: ["spam"], user: { id: 2 } }));
     socket.receive(roomFrame({ messages: ["hello"], user: { id: 3 } }));
     expect(received).toHaveLength(1);
@@ -74,15 +80,24 @@ describe("incoming frames", () => {
 
   test("handlers can rewrite the message", () => {
     const { socket, received } = hookedSocket();
-    cleanups.push(cable.onIncoming(({ message }) => ({ message: { ...message, messages: ["rewritten"] } })));
+    cleanups.push(
+      cable.onIncoming(({ message }) => ({ message: { ...message, messages: ["rewritten"] } }))
+    );
     socket.receive(roomFrame({ messages: ["original"], user: { id: 1 } }));
-    expect((received[0] as { message: { messages: string[] } }).message.messages).toEqual(["rewritten"]);
+    expect((received[0] as { message: { messages: string[] } }).message.messages).toEqual([
+      "rewritten",
+    ]);
   });
 
   test("protocol frames (ping, welcome) are never passed to handlers", () => {
     const { socket, received } = hookedSocket();
     let calls = 0;
-    cleanups.push(cable.onIncoming(() => void (calls += 1)));
+    cleanups.push(
+      cable.onIncoming(() => {
+        calls += 1;
+        return undefined;
+      })
+    );
     socket.receive(JSON.stringify({ type: "ping", message: 1 }));
     expect(calls).toBe(0);
     expect(received).toHaveLength(1);
@@ -91,7 +106,12 @@ describe("incoming frames", () => {
   test("addEventListener listeners see the same verdict, and handlers run once per frame", () => {
     const { socket, received } = hookedSocket();
     let calls = 0;
-    cleanups.push(cable.onIncoming(() => ((calls += 1), "drop")));
+    cleanups.push(
+      cable.onIncoming(() => {
+        calls += 1;
+        return "drop";
+      })
+    );
     const viaListener: unknown[] = [];
     socket.addEventListener("message", (event) => viaListener.push(event));
     socket.receive(roomFrame({ messages: ["x"], user: { id: 1 } }));
@@ -118,7 +138,10 @@ describe("incoming frames", () => {
 describe("late adoption", () => {
   test("hooks the open socket and routes reconnects through the global constructor", () => {
     const socket = new FakeSocket();
-    const transport = { ws: socket as unknown as WebSocket, Impl: class {} as unknown as typeof WebSocket };
+    const transport = {
+      ws: socket as unknown as WebSocket,
+      Impl: class {} as unknown as typeof WebSocket,
+    };
     adoptTransport(transport);
     expect(transport.Impl).toBe(globalThis.WebSocket);
     expect(cable.attached).toBe(true);
@@ -136,7 +159,9 @@ describe("outgoing commands", () => {
     const { socket } = hookedSocket();
     cleanups.push(
       cable.onOutgoing((command) =>
-        command.command === "message" ? { data: { ...command.data, message: "changed" } } : undefined
+        command.command === "message"
+          ? { data: { ...command.data, message: "changed" } }
+          : undefined
       )
     );
     (socket as unknown as WebSocket).send(speak("original"));

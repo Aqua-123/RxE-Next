@@ -11,8 +11,10 @@ export interface Replacement {
 }
 
 export interface Patch {
-  /** Text or pattern that identifies exactly one module factory by its source. */
+  /** Text or pattern that identifies the module factory by its source. */
   find: string | RegExp;
+  /** Apply to every module matching `find`, not just the first (e.g. one component rendered by several pages). */
+  all?: boolean;
   replace: Replacement | readonly Replacement[];
 }
 
@@ -60,7 +62,9 @@ export function exposeSurface(name: string, surface: unknown): void {
 /** Must be called before the site's chunks load, i.e. synchronously during boot. */
 export function registerPatches(owner: string, patches: readonly Patch[]): void {
   for (const patch of patches) {
-    const replacements = Array.isArray(patch.replace) ? patch.replace : [patch.replace as Replacement];
+    const replacements = Array.isArray(patch.replace)
+      ? patch.replace
+      : [patch.replace as Replacement];
     records.push({ owner, patch, replacements, status: { kind: "pending" } });
   }
 }
@@ -89,10 +93,22 @@ function asExpression(source: string): string {
   return source.replace(/^[\w$]+\s*(?=\()/, "function");
 }
 
+/**
+ * Compiles patched module source. Indirect eval runs it in global scope, exactly as
+ * webpack would have run the original; nothing else in RxE evaluates code.
+ */
+function evaluateFactory(source: string): ModuleFactory {
+  // biome-ignore lint/security/noGlobalEval: re-compiling patched site modules is the purpose of this module.
+  const indirectEval = globalThis.eval;
+  return indirectEval(source);
+}
+
 function patchFactory(moduleId: string, factory: ModuleFactory): ModuleFactory {
   const source = String(factory);
   const applicable = records.filter(
-    (record) => record.status.kind !== "applied" && matchesFind(record.patch.find, source)
+    (record) =>
+      (record.patch.all || record.status.kind !== "applied") &&
+      matchesFind(record.patch.find, source)
   );
   if (applicable.length === 0) return factory;
 
@@ -101,23 +117,29 @@ function patchFactory(moduleId: string, factory: ModuleFactory): ModuleFactory {
     let missed = -1;
     let next = code;
     record.replacements.forEach((replacement, index) => {
-      const replaced = next.replace(expandMatch(replacement.match), expandReplacement(record.owner, replacement.with));
+      const replaced = next.replace(
+        expandMatch(replacement.match),
+        expandReplacement(record.owner, replacement.with)
+      );
       if (replaced === next && missed < 0) missed = index;
       next = replaced;
     });
     if (missed >= 0) {
       record.status = { kind: "match-missed", moduleId, replacement: missed };
-      log.warn(`Patch from ${record.owner} no longer matches module ${moduleId}`, record.patch.find);
+      log.warn(
+        `Patch from ${record.owner} no longer matches module ${moduleId}`,
+        record.patch.find
+      );
       continue;
     }
     code = next;
-    record.status = { kind: "applied", moduleIds: [moduleId] };
+    const earlier = record.status.kind === "applied" ? record.status.moduleIds : [];
+    record.status = { kind: "applied", moduleIds: [...earlier, moduleId] };
   }
   if (code === source) return factory;
 
   try {
-    // Indirect eval: the module runs in global scope, exactly as webpack would run it.
-    return (0, eval)(`(${asExpression(code)})\n//# sourceURL=rxe-patched/${moduleId}.js`);
+    return evaluateFactory(`(${asExpression(code)})\n//# sourceURL=rxe-patched/${moduleId}.js`);
   } catch (error) {
     for (const record of applicable) {
       if (record.status.kind === "applied") {

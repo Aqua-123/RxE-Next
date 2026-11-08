@@ -1,5 +1,7 @@
 import { registerFeatures, updateEnvironment } from "./core/runtime";
+import avatarBorders from "./features/avatar-borders";
 import muteEverywhere from "./features/mute-everywhere";
+import richText from "./features/rich-text";
 import settings from "./features/settings";
 import { META } from "./meta";
 import { adoptTransport, cable, installCableTap } from "./platform/cable";
@@ -9,8 +11,10 @@ import { installWebpackTap } from "./platform/webpack";
 import { currentUser } from "./site/api";
 import { siteContext, whenSiteMounted } from "./site/contexts";
 import { installChatSurface } from "./site/surfaces/chat";
+import { installMessagesSurface } from "./site/surfaces/messages";
+import { startThemeEngine } from "./themes/engine";
 
-const FEATURES = [muteEverywhere, settings];
+const FEATURES = [richText, muteEverywhere, avatarBorders, settings];
 
 function boot(): void {
   // All taps must be in place before any site script runs.
@@ -18,6 +22,8 @@ function boot(): void {
   installCableTap();
   installRouteTap();
   installChatSurface();
+  installMessagesSurface();
+  startThemeEngine();
 
   // Registers raw patches synchronously, before the site's chunks load.
   registerFeatures(FEATURES);

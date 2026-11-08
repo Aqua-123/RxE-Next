@@ -2,8 +2,9 @@ import { createStore } from "zustand/vanilla";
 import { log } from "@/platform/log";
 import { exposeToPatches, registerPatches } from "@/platform/webpack";
 import { createFeatureContext } from "@/site/context";
-import type { Environment, FeatureDefinition } from "./feature";
+import type { AnyFeature, Environment, FeatureDefinition } from "./feature";
 import { Scope } from "./scope";
+import type { SettingsSchema } from "./settings";
 import { store } from "./storage";
 
 export type FeatureState =
@@ -19,12 +20,13 @@ export interface FeatureStatus {
   description: string;
   category: FeatureDefinition["category"];
   core: boolean;
+  settings: SettingsSchema;
   enabled: boolean;
   state: FeatureState;
 }
 
 interface Slot {
-  feature: FeatureDefinition;
+  feature: AnyFeature;
   scope?: Scope;
   state: FeatureState;
   /** Whether the feature's raw patches were registered at boot. */
@@ -32,14 +34,15 @@ interface Slot {
 }
 
 const slots = new Map<string, Slot>();
-let environment: Environment = { path: "/", user: null };
+/** Where the user is and who they are; features' `when` and the settings panel read it. */
+export const environmentStore = createStore<Environment>(() => ({ path: "/", user: null }));
 
 /** Live view of every feature, for UI. */
 export const featureStatuses = createStore<readonly FeatureStatus[]>(() => []);
 
-const enabledKey = (feature: FeatureDefinition) => `feature:${feature.id}`;
+const enabledKey = (feature: AnyFeature) => `feature:${feature.id}`;
 
-function isEnabled(feature: FeatureDefinition): boolean {
+function isEnabled(feature: AnyFeature): boolean {
   return feature.core || store.get(enabledKey(feature), feature.enabledByDefault ?? true);
 }
 
@@ -51,6 +54,7 @@ function publish(): void {
       description: feature.description,
       category: feature.category,
       core: feature.core ?? false,
+      settings: feature.settings ?? {},
       enabled: isEnabled(feature),
       state,
     })),
@@ -62,14 +66,14 @@ function desiredState(slot: Slot): FeatureState {
   const { feature } = slot;
   if (!isEnabled(feature)) return { kind: "off" };
   if (feature.patches?.length && !slot.patched) return { kind: "reload-required" };
-  if (feature.when && !feature.when(environment)) return { kind: "inactive" };
+  if (feature.when && !feature.when(environmentStore.getState())) return { kind: "inactive" };
   return { kind: "running" };
 }
 
 function start(slot: Slot): FeatureState {
   const scope = new Scope(slot.feature.id);
   try {
-    const self = slot.feature.setup(createFeatureContext(scope));
+    const self = slot.feature.setup(createFeatureContext(scope, slot.feature));
     if (self) exposeToPatches(slot.feature.id, self);
     slot.scope = scope;
     return { kind: "running" };
@@ -103,7 +107,7 @@ function evaluate(): void {
  * Registers features and, for those enabled right now, their raw patches. Must run
  * synchronously at boot, before the site's chunks load.
  */
-export function registerFeatures(features: readonly FeatureDefinition[]): void {
+export function registerFeatures(features: readonly AnyFeature[]): void {
   for (const feature of features) {
     const patched = Boolean(feature.patches?.length) && isEnabled(feature);
     if (patched) registerPatches(feature.id, feature.patches!);
@@ -113,7 +117,7 @@ export function registerFeatures(features: readonly FeatureDefinition[]): void {
 }
 
 export function updateEnvironment(next: Partial<Environment>): void {
-  environment = { ...environment, ...next };
+  environmentStore.setState(next);
   evaluate();
 }
 

@@ -1,85 +1,128 @@
-import { useStore } from "zustand";
-import { META } from "@/meta";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/ui/components/ui/dialog";
-import { Switch } from "@/ui/components/ui/switch";
-import { cn } from "@/ui/lib/utils";
-import { featureStatuses, setFeatureEnabled, type FeatureState, type FeatureStatus } from "@/core/runtime";
-import { setSettingsOpen, settingsPanel } from "./state";
+  BubbleChatIcon,
+  Database01Icon,
+  PaintBoardIcon,
+  PaintBrush02Icon,
+  Shield01Icon,
+  UserCircleIcon,
+} from "@hugeicons/core-free-icons";
+import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
+import type { ReactNode } from "react";
+import { useStore } from "zustand";
+import { environmentStore } from "@/core/runtime";
+import { META } from "@/meta";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/ui/components/ui/dialog";
+import { ScrollArea } from "@/ui/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/ui/components/ui/tabs";
+import { BackupTab } from "./BackupTab";
+import { FeatureList } from "./FeatureList";
+import { type SettingsTab, setSettingsOpen, setSettingsTab, settingsPanel } from "./state";
+import { ThemesTab } from "./themes/ThemesTab";
 
-function describe(state: FeatureState): string {
-  switch (state.kind) {
-    case "running":
-      return "Running";
-    case "off":
-      return "Off";
-    case "inactive":
-      return "Not active on this page";
-    case "reload-required":
-      return "Reload the page to apply";
-    case "error":
-      return `Error: ${state.message}`;
-  }
+interface TabDefinition {
+  id: SettingsTab;
+  label: string;
+  description: string;
+  icon: IconSvgElement;
+  content: ReactNode;
+  modOnly?: boolean;
 }
 
-function FeatureRow({ status }: { status: FeatureStatus }) {
-  const nameId = `rxe-feature-${status.id}`;
-  return (
-    <li className="grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1 rounded-lg border border-transparent bg-card p-4 transition-colors hover:border-border">
-      <span id={nameId} className="font-semibold">
-        {status.name}
-      </span>
-      <Switch
-        checked={status.enabled}
-        onCheckedChange={(enabled) => setFeatureEnabled(status.id, enabled)}
-        aria-labelledby={nameId}
-        aria-describedby={`${nameId}-description`}
-      />
-      <p id={`${nameId}-description`} className="col-span-full text-sm leading-relaxed text-muted-foreground">
-        {status.description}
-      </p>
-      <span
-        data-state={status.state.kind}
-        className={cn(
-          "col-span-full flex items-center gap-1.5 text-xs text-muted-foreground before:size-1.5 before:rounded-full before:bg-current",
-          status.state.kind === "running" && "text-success",
-          status.state.kind === "error" && "text-destructive"
-        )}
-      >
-        {describe(status.state)}
-      </span>
-    </li>
-  );
-}
+const TABS: readonly TabDefinition[] = [
+  {
+    id: "chat",
+    label: "Chat",
+    description: "How messages look and who you hear from.",
+    icon: BubbleChatIcon,
+    content: <FeatureList category="chat" />,
+  },
+  {
+    id: "appearance",
+    label: "Appearance",
+    description: "Visual changes around the site.",
+    icon: PaintBrush02Icon,
+    content: <FeatureList category="appearance" />,
+  },
+  {
+    id: "profiles",
+    label: "Profiles",
+    description: "Profiles and user cards.",
+    icon: UserCircleIcon,
+    content: <FeatureList category="profiles" />,
+  },
+  {
+    id: "moderation",
+    label: "Moderation",
+    description: "Tools for moderators.",
+    icon: Shield01Icon,
+    content: <FeatureList category="moderation" />,
+    modOnly: true,
+  },
+  {
+    id: "themes",
+    label: "Themes",
+    description: "Recolor EmeraldChat and RxE.",
+    icon: PaintBoardIcon,
+    content: <ThemesTab />,
+  },
+  {
+    id: "backup",
+    label: "Backup",
+    description: "Export, restore or reset RxE.",
+    icon: Database01Icon,
+    content: <BackupTab />,
+  },
+];
 
 export function SettingsPanel() {
-  const open = useStore(settingsPanel, (state) => state.open);
-  const statuses = useStore(featureStatuses);
+  const { open, tab } = useStore(settingsPanel);
+  const isMod = useStore(environmentStore, (env) => env.user?.isMod ?? false);
+  const tabs = TABS.filter((definition) => !definition.modOnly || isMod);
+  const current = tabs.find((definition) => definition.id === tab) ?? tabs[0]!;
+
   return (
     <Dialog open={open} onOpenChange={setSettingsOpen}>
-      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-lg">
-        <div aria-hidden className="h-0.5 bg-linear-to-r from-rxe-lavender via-rxe-pink to-rxe-peach" />
-        <DialogHeader className="px-5 pt-4 pb-3">
-          <DialogTitle className="flex items-baseline gap-2 text-lg font-bold">
-            <span>
-              <span className="text-shimmer">RxE</span> Settings
-            </span>
-            <span className="text-xs font-medium text-muted-foreground">v{META.version}</span>
-          </DialogTitle>
-          <DialogDescription>Features RxE adds to EmeraldChat.</DialogDescription>
-        </DialogHeader>
-        <ul className="flex max-h-[min(560px,70vh)] flex-col gap-2 overflow-y-auto px-5 pb-5">
-          {statuses
-            .filter((status) => !status.core)
-            .map((status) => (
-              <FeatureRow key={status.id} status={status} />
-            ))}
-        </ul>
+      <DialogContent className="h-[min(720px,88vh)] gap-0 overflow-hidden p-0 sm:max-w-4xl">
+        <Tabs
+          orientation="vertical"
+          value={current.id}
+          onValueChange={(next) => setSettingsTab(next as SettingsTab)}
+          className="grid h-full min-h-0 grid-cols-[13rem_1fr] gap-0"
+        >
+          <aside className="flex min-h-0 flex-col gap-4 border-r border-border bg-muted p-3">
+            <div className="flex flex-col gap-0.5 px-2 pt-1">
+              <DialogTitle className="text-lg font-bold">
+                <span className="text-shimmer">RxE</span> Settings
+              </DialogTitle>
+              <DialogDescription className="text-xs">v{META.version}</DialogDescription>
+            </div>
+            <TabsList variant="line" className="w-full items-stretch gap-0.5">
+              {tabs.map((definition) => (
+                <TabsTrigger
+                  key={definition.id}
+                  value={definition.id}
+                  className="h-9 justify-start gap-2.5 rounded-lg px-2.5 data-active:bg-accent data-active:text-foreground"
+                >
+                  <HugeiconsIcon icon={definition.icon} />
+                  {definition.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </aside>
+          <div className="flex min-h-0 flex-col">
+            <header className="border-b border-border px-6 pt-5 pb-4 pr-14">
+              <h2 className="text-base font-semibold">{current.label}</h2>
+              <p className="text-sm text-muted-foreground">{current.description}</p>
+            </header>
+            <ScrollArea className="min-h-0 flex-1">
+              {tabs.map((definition) => (
+                <TabsContent key={definition.id} value={definition.id} className="p-6">
+                  {definition.content}
+                </TabsContent>
+              ))}
+            </ScrollArea>
+          </div>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );

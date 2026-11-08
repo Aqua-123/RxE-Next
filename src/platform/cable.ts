@@ -7,14 +7,15 @@ export interface ChannelIdentifier {
   [param: string]: unknown;
 }
 
-export type CableMessage = Record<string, any>;
+/** Server JSON, untyped until `site/wire.ts` parses it into domain types. */
+export type CableMessage = Record<string, unknown>;
 
 export interface IncomingFrame {
   identifier: ChannelIdentifier;
   message: CableMessage;
 }
 
-export type IncomingVerdict = void | "drop" | { message: CableMessage };
+export type IncomingVerdict = undefined | "drop" | { message: CableMessage };
 
 export type OutgoingCommand =
   | { command: "subscribe" | "unsubscribe"; identifier: ChannelIdentifier }
@@ -24,7 +25,7 @@ export type OutgoingCommand =
       data: CableMessage & { action: string };
     };
 
-export type OutgoingVerdict = void | "drop" | { data: CableMessage };
+export type OutgoingVerdict = undefined | "drop" | { data: CableMessage };
 
 type IncomingHandler = (frame: IncomingFrame) => IncomingVerdict;
 type OutgoingHandler = (command: OutgoingCommand) => OutgoingVerdict;
@@ -36,33 +37,38 @@ const hookedSockets = new WeakSet<object>();
 let installedBeforeApp = false;
 let adoptedLate = false;
 
-function parse(text: string): any {
+function isObject(value: unknown): value is CableMessage {
+  return typeof value === "object" && value !== null;
+}
+
+function parse(text: unknown): CableMessage | undefined {
+  if (typeof text !== "string") return undefined;
   try {
-    return JSON.parse(text);
+    const value: unknown = JSON.parse(text);
+    return isObject(value) ? value : undefined;
   } catch {
     return undefined;
   }
 }
 
 function parseIdentifier(value: unknown): ChannelIdentifier | undefined {
-  const identifier = typeof value === "string" ? parse(value) : undefined;
-  return typeof identifier?.channel === "string" ? identifier : undefined;
+  const identifier = parse(value);
+  return typeof identifier?.channel === "string" ? (identifier as ChannelIdentifier) : undefined;
 }
 
 /** Returns the rewritten frame, `null` to drop it, or `undefined` to pass it through untouched. */
 function filterIncoming(data: unknown): string | null | undefined {
-  if (typeof data !== "string" || incomingHandlers.size === 0) return undefined;
+  if (incomingHandlers.size === 0) return undefined;
   const raw = parse(data);
-  if (!raw || raw.type || typeof raw.message !== "object") return undefined;
+  if (!raw || raw.type || !isObject(raw.message)) return undefined;
   const identifier = parseIdentifier(raw.identifier);
   if (!identifier) return undefined;
 
-  let message: CableMessage = raw.message;
+  let message = raw.message;
   let changed = false;
   for (const handler of incomingHandlers) {
-    const verdict = attempt("cable incoming handler", () =>
-      handler({ identifier, message })
-    );
+    const frame = { identifier, message };
+    const verdict = attempt("cable incoming handler", () => handler(frame));
     if (verdict === "drop") return null;
     if (verdict) {
       message = verdict.message;
@@ -74,16 +80,15 @@ function filterIncoming(data: unknown): string | null | undefined {
 
 /** Returns the data to send, or `null` to drop the command. */
 function filterOutgoing<T>(data: T): T | string | null {
-  if (typeof data !== "string" || outgoingHandlers.size === 0) return data;
+  if (outgoingHandlers.size === 0) return data;
   const raw = parse(data);
   const identifier = parseIdentifier(raw?.identifier);
-  if (!identifier) return data;
+  if (!raw || !identifier) return data;
 
   if (raw.command === "subscribe" || raw.command === "unsubscribe") {
+    const command: OutgoingCommand = { command: raw.command, identifier };
     for (const handler of outgoingHandlers) {
-      const command = { command: raw.command, identifier } as const;
-      if (attempt("cable outgoing handler", () => handler(command)) === "drop")
-        return null;
+      if (attempt("cable outgoing handler", () => handler(command)) === "drop") return null;
     }
     return data;
   }
@@ -93,8 +98,12 @@ function filterOutgoing<T>(data: T): T | string | null {
   if (typeof payload?.action !== "string") return data;
   let changed = false;
   for (const handler of outgoingHandlers) {
-    const command = { command: "message", identifier, data: payload } as const;
-    const verdict = attempt("cable outgoing handler", () => handler(command));
+    const command: OutgoingCommand = {
+      command: "message",
+      identifier,
+      data: payload as CableMessage & { action: string },
+    };
+    const verdict: OutgoingVerdict = attempt("cable outgoing handler", () => handler(command));
     if (verdict === "drop") return null;
     if (verdict) {
       payload = verdict.data;

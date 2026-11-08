@@ -15,13 +15,13 @@ RxE has to change EmeraldChat in every way the old RxE did, and more:
 The target is a Next.js 14 static export that redeploys often. Every way in is a
 different mechanism, and each has its own failure mode:
 
-| Way in | Failure mode |
-|---|---|
-| AnyCable frames | Stable; the protocol is unchanged from the old Rails app |
-| REST responses (axios over XHR) | Stable |
-| React context values | Stable property names |
-| Webpack module source | Changes on most deploys |
-| DOM structure and CSS-module class names | Changes whenever markup changes |
+| Way in                                   | Failure mode                                             |
+| ---------------------------------------- | -------------------------------------------------------- |
+| AnyCable frames                          | Stable; the protocol is unchanged from the old Rails app |
+| REST responses (axios over XHR)          | Stable                                                   |
+| React context values                     | Stable property names                                    |
+| Webpack module source                    | Changes on most deploys                                  |
+| DOM structure and CSS-module class names | Changes whenever markup changes                          |
 
 Decisions already made:
 
@@ -33,8 +33,8 @@ Decisions already made:
 - Distribution: Chrome Web Store, Firefox Add-ons, GitHub releases, and a userscript.
   Store rules mean no remote code; this is fine because everything is bundled.
 
-The design question is how a feature author expresses *what* they want to change,
-without each feature re-deriving *how* to reach into the site, and without one
+The design question is how a feature author expresses _what_ they want to change,
+without each feature re-deriving _how_ to reach into the site, and without one
 site deploy breaking many features in different ways.
 
 ## Usage (caller's view)
@@ -56,7 +56,7 @@ export default defineFeature({
   setup({ chat }) {
     chat.outgoing((draft) => {
       const expanded = expandCommand(draft.text);
-      if (expanded === null) return;               // not a command, leave untouched
+      if (expanded === null) return; // not a command, leave untouched
       return { ...draft, text: expanded };
     });
   },
@@ -83,7 +83,11 @@ export default defineFeature({
   name: "Gender borders",
   category: "appearance",
   settings: {
-    palette: setting.select({ label: "Colours", options: ["classic", "pastel"], default: "classic" }),
+    palette: setting.select({
+      label: "Colours",
+      options: ["classic", "pastel"],
+      default: "classic",
+    }),
   },
   setup({ messages, settings }) {
     messages.decorateAvatar((user) => ({
@@ -127,7 +131,7 @@ export default defineFeature({
     },
   ],
   setup({ settings }) {
-    return { delay: () => settings.delay.value };   // exposed to the patch as `$self`
+    return { delay: () => settings.delay.value }; // exposed to the patch as `$self`
   },
 });
 ```
@@ -135,10 +139,10 @@ export default defineFeature({
 Themes are not features. They are a core subsystem with their own panel tab:
 
 ```ts
-themes.apply(theme);              // live preview while editing
+themes.apply(theme); // live preview while editing
 themes.save(theme);
-themes.export(theme.id);          // → string
-themes.import(text);              // validated; throws ThemeImportError on a bad payload
+themes.export(theme.id); // → string
+themes.import(text); // validated; throws ThemeImportError on a bad payload
 ```
 
 ## Shape
@@ -215,13 +219,13 @@ interface FeatureDefinition<S extends SettingsSchema = {}> {
 }
 
 interface FeatureContext<S> {
-  settings: SettingsHandle<S>;        // .value, .set(), .subscribe(); typed from the schema
+  settings: SettingsHandle<S>; // .value, .set(), .subscribe(); typed from the schema
   chat: ChatSurface;
   messages: MessagesSurface;
   composer: ComposerSurface;
   ui: { accountMenu: AccountMenuSurface; userCard: UserCardSurface; header: HeaderSurface };
-  site: SiteApi;                      // current user, mutes, rooms, REST calls, all typed
-  raw: RawAccess;                     // escape hatch: cable, dom, webpack, react
+  site: SiteApi; // current user, mutes, rooms, REST calls, all typed
+  raw: RawAccess; // escape hatch: cable, dom, webpack, react
   log: Logger;
 }
 // Every registration made through the context is tied to the feature's Scope and
@@ -275,7 +279,7 @@ interface Theme {
   id: string;
   name: string;
   schema: 1;
-  tokens: Partial<Record<SiteToken, string>>;   // the site's own --primary-500, --base1-850, …
+  tokens: Partial<Record<SiteToken, string>>; // the site's own --primary-500, --base1-850, …
   typography?: { family: string; scale: number };
   shape?: { radius: number; density: "compact" | "cozy" };
   wallpaper?: { kind: "image" | "gradient"; value: string; blur: number; dim: number };
@@ -298,8 +302,8 @@ interface Patch {
   replace: Replacement | readonly Replacement[];
 }
 interface Replacement {
-  match: RegExp;          // `\i` expands to a minified-identifier pattern
-  with: string;           // `$self` → the feature's PatchSelf, `$rxe` → the surface registry
+  match: RegExp; // `\i` expands to a minified-identifier pattern
+  with: string; // `$self` → the feature's PatchSelf, `$rxe` → the surface registry
 }
 // Chunks are intercepted by owning `self.webpackChunk_N_E` before Next's runtime loads.
 // A patch whose `find` or `match` hits nothing is reported in the panel; the

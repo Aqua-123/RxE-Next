@@ -1,53 +1,19 @@
 /*
  * RxE's one stylesheet. Compiled by Tailwind at build time and adopted into every
  * RxE shadow root (never the site's document), so utilities and preflight cannot
- * leak onto the site. See ui/styles.ts.
+ * leak onto the site. Colors come only from tokens.css. See ui/styles.ts.
  */
 @import "tailwindcss" source("../..");
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "./tokens.css";
 
-/* RxE's UI is dark-only; themes change the variables below, not the variant. */
+/* RxE's UI follows the active theme; `dark:` variants always apply and read its tokens. */
 @custom-variant dark (&);
 
-@theme inline {
-  --font-sans: Inter, system-ui, sans-serif;
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --color-success: var(--success);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-}
-
 @theme {
-  /* The RxE logo palette. */
-  --color-rxe-lavender: #b89cff;
-  --color-rxe-pink: #f4a6d7;
-  --color-rxe-peach: #ffc38a;
-
   --animate-shimmer: shimmer 4s linear infinite;
-  --animate-sparkle:
-    sparkle-twinkle 2.4s ease-in-out infinite,
-    sparkle-tint 4s linear infinite;
+  --animate-sparkle: sparkle-twinkle 2.4s ease-in-out infinite, sparkle-tint 4s linear infinite;
 
   @keyframes shimmer {
     from {
@@ -71,66 +37,37 @@
   @keyframes sparkle-tint {
     0%,
     100% {
-      color: var(--color-rxe-lavender);
+      color: var(--rxe-accent-1);
     }
     33% {
-      color: var(--color-rxe-pink);
+      color: var(--rxe-accent-2);
     }
     66% {
-      color: var(--color-rxe-peach);
+      color: var(--rxe-accent-3);
     }
   }
 }
 
 /*
- * Semantic tokens, derived from the site's own design tokens (custom properties
- * inherit into shadow roots), so re-theming the site re-themes RxE's UI with it.
- */
-:host {
-  /* Above every site layer (its popups, header, toasts). */
-  --z-overlay: 2147483000;
-  --radius: 0.75rem;
-  --background: var(--base1-850, #262834);
-  --foreground: var(--primary-content, #fff);
-  --card: var(--base1-600, #303343);
-  --card-foreground: var(--primary-content, #fff);
-  --popover: var(--base1-850, #262834);
-  --popover-foreground: var(--primary-content, #fff);
-  --primary: var(--color-rxe-lavender);
-  --primary-foreground: #1d1830;
-  --secondary: var(--base1-500, #3c3f4e);
-  --secondary-foreground: var(--primary-content, #fff);
-  --muted: var(--base1-600, #303343);
-  --muted-foreground: var(--base1-100, #a3b3ca);
-  --accent: var(--base1-500, #3c3f4e);
-  --accent-foreground: var(--primary-content, #fff);
-  --destructive: var(--error-500, #e94235);
-  --success: var(--primary-300, #4be474);
-  --border: rgb(255 255 255 / 0.1);
-  --input: rgb(255 255 255 / 0.15);
-  --ring: var(--color-rxe-lavender);
-}
-
-/*
- * Lavender → pink → peach clipped to text. The gradient repeats every 50% of a
- * 200%-wide image, so sliding it by one width loops seamlessly.
+ * The theme's accent gradient clipped to text, with a glint sweeping through. The
+ * gradient repeats every 50% of a 200%-wide image, so sliding it one width loops seamlessly.
  */
 @utility text-shimmer {
   background-image: linear-gradient(
     90deg,
-    var(--color-rxe-lavender) 0%,
-    var(--color-rxe-pink) 12%,
-    #ffd1a1 22%,
-    #fff7ee 25%,
-    #ffd1a1 28%,
-    var(--color-rxe-pink) 38%,
-    var(--color-rxe-lavender) 50%,
-    var(--color-rxe-pink) 62%,
-    #ffd1a1 72%,
-    #fff7ee 75%,
-    #ffd1a1 78%,
-    var(--color-rxe-pink) 88%,
-    var(--color-rxe-lavender) 100%
+    var(--rxe-accent-1) 0%,
+    var(--rxe-accent-2) 12%,
+    var(--rxe-accent-3) 22%,
+    var(--rxe-glint) 25%,
+    var(--rxe-accent-3) 28%,
+    var(--rxe-accent-2) 38%,
+    var(--rxe-accent-1) 50%,
+    var(--rxe-accent-2) 62%,
+    var(--rxe-accent-3) 72%,
+    var(--rxe-glint) 75%,
+    var(--rxe-accent-3) 78%,
+    var(--rxe-accent-2) 88%,
+    var(--rxe-accent-1) 100%
   );
   background-size: 200% 100%;
   background-clip: text;

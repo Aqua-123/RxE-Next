@@ -7,8 +7,8 @@ import { parseRoomEvent, parseSpeak, serializeRoomEvent, serializeSpeak } from "
 /** Return from a chat handler to stop the event: incoming ones never reach the site, outgoing ones are never sent. */
 export const drop = Symbol("drop");
 
-type IncomingHandler = (event: ChatEvent) => ChatEvent | typeof drop | void;
-type OutgoingHandler = (message: OutgoingMessage) => OutgoingMessage | typeof drop | void;
+type IncomingHandler = (event: ChatEvent) => ChatEvent | typeof drop | undefined;
+type OutgoingHandler = (message: OutgoingMessage) => OutgoingMessage | typeof drop | undefined;
 
 export interface ChatApi {
   /** Sees every room event (group, DM, 1-on-1) before the site does; may rewrite or drop it. */
@@ -20,7 +20,10 @@ export interface ChatApi {
 const incomingHandlers = new Set<IncomingHandler>();
 const outgoingHandlers = new Set<OutgoingHandler>();
 
-function runPipeline<T>(handlers: Set<(value: T) => T | typeof drop | void>, initial: T): T | typeof drop {
+function runPipeline<T>(
+  handlers: Set<(value: T) => T | typeof drop | undefined>,
+  initial: T
+): T | typeof drop {
   let value = initial;
   for (const handler of handlers) {
     const result = attempt("chat handler", () => handler(value));

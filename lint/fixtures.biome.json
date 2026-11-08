@@ -1,0 +1,11 @@
+{
+  "$schema": "../node_modules/@biomejs/biome/configuration_schema.json",
+  "linter": { "rules": { "preset": "none" } },
+  "css": { "parser": { "tailwindDirectives": true } },
+  "plugins": [
+    "./no-inline-style.grit",
+    "./no-color-literals.grit",
+    "./no-css-color-literals.grit",
+    "./portal-into-shadow-root.grit"
+  ]
+}

@@ -1,8 +1,8 @@
+import { readFile } from "node:fs/promises";
 import tailwind from "@tailwindcss/postcss";
 import type { Plugin } from "esbuild";
 import { transform } from "lightningcss";
 import postcss from "postcss";
-import { readFile } from "node:fs/promises";
 
 const TARGETS = { chrome: 111 << 16, firefox: 128 << 16 };
 
@@ -22,7 +22,9 @@ export function cssPlugin({ minify }: { minify: boolean }): Plugin {
         const watchFiles: string[] = [];
         const watchDirs: string[] = [];
         if (path.endsWith(".tailwind.css")) {
-          const result = await postcss([tailwind({ optimize: false })]).process(css, { from: path });
+          const result = await postcss([tailwind({ optimize: false })]).process(css, {
+            from: path,
+          });
           css = result.css;
           // Tailwind scans source directories for class names; rebuild when they change.
           for (const message of result.messages) {
@@ -30,7 +32,12 @@ export function cssPlugin({ minify }: { minify: boolean }): Plugin {
             if (message.type === "dir-dependency") watchDirs.push(message.dir);
           }
         }
-        const { code } = transform({ filename: path, code: Buffer.from(css), minify, targets: TARGETS });
+        const { code } = transform({
+          filename: path,
+          code: Buffer.from(css),
+          minify,
+          targets: TARGETS,
+        });
         return {
           contents: `export default ${JSON.stringify(code.toString())};`,
           loader: "js",

@@ -1,20 +1,34 @@
 import { beforeAll, describe, expect, test } from "bun:test";
-import { exposeToPatches, installWebpackTap, patchReport, registerPatches } from "../src/platform/webpack";
+import {
+  exposeToPatches,
+  installWebpackTap,
+  patchReport,
+  registerPatches,
+} from "../src/platform/webpack";
 
 const GLOBAL = "webpackChunk_test";
 
+type Factory = (module: { exports: any }, exports: unknown, require: unknown) => void;
+
 /** Module factories are built from exact source text, as they arrive from the site's minified chunks. */
-const factory = (source: string): Function => (0, eval)(`(${source})`);
+const factory = (source: string): Factory => {
+  // biome-ignore lint/security/noGlobalEval: reproduces minified site source byte-for-byte.
+  const indirectEval = globalThis.eval;
+  return indirectEval(`(${source})`);
+};
 
 /** A minimal model of webpack's JSONP runtime: read push as parent, then replace it. */
 function bootWebpackRuntime() {
-  const registry: Record<string, Function> = {};
+  const registry: Record<string, Factory> = {};
   const chunks = (globalThis as Record<string, any>)[GLOBAL] as unknown[];
-  const callback = (parentPush: Function, entry: [unknown[], Record<string, Function>]) => {
+  const callback = (
+    parentPush: (entry: unknown) => void,
+    entry: [unknown[], Record<string, Factory>]
+  ) => {
     Object.assign(registry, entry[1]);
     parentPush(entry);
   };
-  chunks.forEach((entry) => callback(() => {}, entry as never));
+  for (const entry of chunks) callback(() => {}, entry as never);
   chunks.push = callback.bind(null, chunks.push.bind(chunks)) as never;
   const run = (id: string) => {
     const module = { exports: {} as any };
@@ -24,7 +38,7 @@ function bootWebpackRuntime() {
   return { run };
 }
 
-const push = (modules: Record<string, Function>) =>
+const push = (modules: Record<string, Factory>) =>
   ((globalThis as Record<string, any>)[GLOBAL] as unknown[]).push([[1], modules]);
 
 beforeAll(() => {
@@ -34,8 +48,17 @@ beforeAll(() => {
       replace: { match: /return"(\w+)"/, with: 'return $self.decorate("$1")' },
     })),
     { find: '"never-matches"', replace: { match: /nope/, with: "x" } },
-    { find: '"half-broken"', replace: [{ match: /value=1/, with: "value=2" }, { match: /missing/, with: "x" }] },
-    { find: '"minified-ids"', replace: { match: /(\i)\.exports\.n=(\i)/, with: "$1.exports.n=$2*10" } },
+    {
+      find: '"half-broken"',
+      replace: [
+        { match: /value=1/, with: "value=2" },
+        { match: /missing/, with: "x" },
+      ],
+    },
+    {
+      find: '"minified-ids"',
+      replace: { match: /(\i)\.exports\.n=(\i)/, with: "$1.exports.n=$2*10" },
+    },
   ]);
   exposeToPatches("greeter", { decorate: (word: string) => `✨${word}✨` });
   installWebpackTap(GLOBAL);
@@ -43,7 +66,9 @@ beforeAll(() => {
 
 describe("webpack tap", () => {
   test("patches chunks pushed before the runtime loads", () => {
-    push({ early: factory('function(e){"greeting-early";e.exports.greet=function(){return"early"}}') });
+    push({
+      early: factory('function(e){"greeting-early";e.exports.greet=function(){return"early"}}'),
+    });
     const { run } = bootWebpackRuntime();
     expect(run("early").greet()).toBe("✨early✨");
   });
@@ -63,7 +88,9 @@ describe("webpack tap", () => {
   test("handles method-shorthand factories", () => {
     const { run } = bootWebpackRuntime();
     // Object-literal method: String() yields `123(e){…}`, which is not an expression on its own.
-    const shorthand = factory('{123(e){"greeting-short";e.exports.greet=()=>{return"short"}}}[123]'.replace(/^/, "(").replace(/\[123\]$/, ")[123]"));
+    const shorthand = factory(
+      '({123(e){"greeting-short";e.exports.greet=()=>{return"short"}}})[123]'
+    );
     push({ short: shorthand });
     expect(run("short").greet()).toBe("✨short✨");
   });
@@ -85,6 +112,8 @@ describe("webpack tap", () => {
       moduleId: "broken",
       replacement: 1,
     });
-    expect(report.find((entry) => entry.find.includes("never-matches"))?.status.kind).toBe("pending");
+    expect(report.find((entry) => entry.find.includes("never-matches"))?.status.kind).toBe(
+      "pending"
+    );
   });
 });

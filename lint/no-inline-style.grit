@@ -1,0 +1,13 @@
+// RxE's design system: every visual property comes from classes and theme tokens, never inline styles.
+or {
+  JsxAttribute(name=$name) as $attr where {
+    $name <: `style`,
+    register_diagnostic(span=$attr, message="No inline styles. Use design-system classes; for site DOM, ship a stylesheet that reads theme tokens.")
+  },
+  `$el.style.$prop = $value` as $write where {
+    register_diagnostic(span=$write, message="No inline styles. Toggle a class or data attribute and style it in CSS.")
+  },
+  `$el.setAttribute("style", $value)` as $call where {
+    register_diagnostic(span=$call, message="No inline styles. Toggle a class or data attribute and style it in CSS.")
+  }
+}

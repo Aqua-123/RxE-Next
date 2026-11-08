@@ -38,7 +38,7 @@ const listeners = new Set<() => void>();
 let tapped = false;
 
 function notify(): void {
-  listeners.forEach((listener) => attempt("site prefs listener", listener));
+  for (const listener of listeners) attempt("site prefs listener", listener);
 }
 
 /** Fires when the site's preferences change in this tab or another one. */

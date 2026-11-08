@@ -1,0 +1,91 @@
+/*
+ * RxE's design tokens. The only CSS file allowed to hold color values (see biome.json).
+ *
+ * Two sources feed these semantic tokens, both set on the site's :root by the theme engine:
+ *   - the site's own tokens (--base1-*, --primary-*, --error-*, …)
+ *   - RxE's tokens (--rxe-accent-*, --rxe-link, --rxe-gender-*, …)
+ * Custom properties inherit into shadow roots, so switching theme re-themes RxE's UI too.
+ */
+
+/* Tailwind's palette is switched off: only the semantic colors below exist as utilities. */
+@theme {
+  --color-*: initial;
+}
+
+@theme inline {
+  --font-sans: var(--rxe-font);
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-overlay: var(--overlay);
+
+  --color-brand-1: var(--rxe-accent-1);
+  --color-brand-2: var(--rxe-accent-2);
+  --color-brand-3: var(--rxe-accent-3);
+  --color-link: var(--rxe-link);
+  --color-mention: var(--rxe-mention);
+  --color-mention-foreground: var(--rxe-mention-foreground);
+
+  /* A theme preview's own colors, set per card by generated CSS (see themes/previewStyles.ts). */
+  --color-preview-background: var(--pv-background);
+  --color-preview-surface: var(--pv-surface);
+  --color-preview-text: var(--pv-text);
+  --color-preview-muted: var(--pv-muted);
+  --color-preview-accent-1: var(--pv-accent-1);
+  --color-preview-accent-2: var(--pv-accent-2);
+  --color-preview-accent-3: var(--pv-accent-3);
+
+  --drop-shadow-glow: 0 0 6px color-mix(in srgb, var(--rxe-accent-1) 55%, transparent);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+}
+
+:host {
+  --radius: 0.75rem;
+  /* Above every site layer: dialogs, then popovers opened from them. */
+  --z-overlay: 2147483000;
+  --z-popover: 2147483001;
+
+  --background: var(--base1-850);
+  --foreground: var(--primary-content);
+  --card: var(--base1-600);
+  --card-foreground: var(--primary-content);
+  --popover: var(--base1-850);
+  --popover-foreground: var(--primary-content);
+  --primary: var(--rxe-accent-1);
+  --primary-foreground: var(--rxe-accent-foreground);
+  --secondary: var(--base1-500);
+  --secondary-foreground: var(--primary-content);
+  --muted: var(--base1-600);
+  --muted-foreground: var(--base1-100);
+  --accent: var(--base1-700);
+  --accent-foreground: var(--primary-content);
+  --destructive: var(--error-500);
+  --success: var(--primary-300);
+  --border: var(--primary-content-10);
+  --input: var(--primary-content-10);
+  --ring: var(--rxe-accent-1);
+  --overlay: color-mix(in srgb, var(--base1-900) 55%, transparent);
+}

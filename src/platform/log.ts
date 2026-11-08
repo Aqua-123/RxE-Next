@@ -1,4 +1,4 @@
-const TAG = ["%cRxE", "color:#2ecc71;font-weight:bold"] as const;
+const TAG = ["%cRxE", "font-weight:bold"] as const;
 
 export const log = {
   info: (...args: unknown[]) => console.info(...TAG, ...args),

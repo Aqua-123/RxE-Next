@@ -1,0 +1,9 @@
+// RxE UI lives in shadow roots; a portal without `container` escapes to the site's <body> and loses all styles.
+or {
+  JsxOpeningElement(name=$name, attributes=$attrs) as $el,
+  JsxSelfClosingElement(name=$name, attributes=$attrs) as $el
+} where {
+  $name <: r".*\.Portal",
+  not $attrs <: contains JsxAttribute(name=`container`),
+  register_diagnostic(span=$el, message="Portals must pass container={usePortalContainer()} so they render inside RxE's shadow root.")
+}

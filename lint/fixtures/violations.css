@@ -1,0 +1,4 @@
+/* Every declaration below must be reported. Checked by test/lint.test.ts. */
+.hex { color: #fff; }
+.fn { background: rgb(0 0 0 / 0.5); }
+.named { border-color: red; }

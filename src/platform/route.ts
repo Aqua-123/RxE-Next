@@ -15,7 +15,7 @@ function notifyIfChanged(): void {
   const path = currentPath();
   if (path === lastPath) return;
   lastPath = path;
-  listeners.forEach((listener) => attempt("route listener", () => listener(path)));
+  for (const listener of listeners) attempt("route listener", () => listener(path));
 }
 
 /** Next's client-side navigation goes through the History API, so patching it sees every route change. */

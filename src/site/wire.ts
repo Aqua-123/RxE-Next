@@ -1,4 +1,4 @@
-import type { ChannelIdentifier, CableMessage } from "@/platform/cable";
+import type { CableMessage, ChannelIdentifier } from "@/platform/cable";
 import type { ChatEvent, Gender, OutgoingMessage, RoomId, User, UserId } from "./model";
 
 /**
@@ -21,6 +21,8 @@ export interface RawUser {
 
 const GENDERS: Record<string, Gender> = { m: "male", f: "female", o: "other" };
 
+const stringOrNull = (value: unknown): string | null => (typeof value === "string" ? value : null);
+
 export function parseUser(raw: unknown): User | null {
   const user = raw as RawUser | null;
   if (typeof user?.id !== "number") return null;
@@ -40,12 +42,21 @@ export function parseUser(raw: unknown): User | null {
 }
 
 /** RoomChannel frames: `{ messages, picture, user }`, `{ typing, user }`, `{ user_connected, user }`, … */
-export function parseRoomEvent(identifier: ChannelIdentifier, message: CableMessage): ChatEvent | null {
+export function parseRoomEvent(
+  identifier: ChannelIdentifier,
+  message: CableMessage
+): ChatEvent | null {
   const room = String(identifier.room_id ?? "") as RoomId;
   const user = parseUser(message.user);
   if (!room || !user) return null;
   if (Array.isArray(message.messages)) {
-    return { kind: "message", room, author: user, text: message.messages.map(String), picture: message.picture ?? null };
+    return {
+      kind: "message",
+      room,
+      author: user,
+      text: message.messages.map(String),
+      picture: stringOrNull(message.picture),
+    };
   }
   if (message.typing) return { kind: "typing", room, author: user };
   if (message.user_connected) return { kind: "joined", room, user };
@@ -62,7 +73,11 @@ export function serializeRoomEvent(event: ChatEvent, original: CableMessage): Ca
 /** The `speak` action: `{ action: "speak", message, id, mode, picture? }`. */
 export function parseSpeak(data: CableMessage): OutgoingMessage | null {
   if (data.action !== "speak" || typeof data.id !== "string") return null;
-  return { room: data.id as RoomId, text: String(data.message ?? ""), picture: data.picture ?? null };
+  return {
+    room: data.id as RoomId,
+    text: String(data.message ?? ""),
+    picture: stringOrNull(data.picture),
+  };
 }
 
 export function serializeSpeak(message: OutgoingMessage, original: CableMessage): CableMessage {
