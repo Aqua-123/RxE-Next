@@ -94,6 +94,7 @@ const options: BuildOptions = {
   target: "es2022",
   jsx: "automatic",
   jsxImportSource: "react",
+  loader: { ".png": "dataurl" },
   define: {
     __RXE_VERSION__: JSON.stringify(pkg.version),
     "process.env.NODE_ENV": JSON.stringify(watchMode ? "development" : "production"),

@@ -139,9 +139,10 @@ and Backup.
 - **Header and popup fixes:** tooltips on the header's unlabelled icons, bigger
   header buttons on phones, a clear Close button on popups, and a clearer
   support form. Each fix has its own switch.
-- **Your name as the tab title:** the browser tab shows your display name,
-  like "Teriyaki - RxE Next 0.1.0", instead of the site's "Omegle alternative
-  for…", so you can tell accounts apart. The version can be turned off.
+- **Your name in the tab:** the browser tab shows your display name, like
+  "Teriyaki - RxE Next 0.1.0", and the old RxE icon, instead of the site's
+  "Omegle alternative for…" and green gem. This makes RxE tabs and accounts easy
+  to tell apart. The version and the icon can each be turned off.
 - **Older versions in the account menu:** removes the header's "Choose Theme"
   button, which only links to the site's Legacy and Classic versions, and puts
   those links in the account menu under "Older versions".
@@ -267,7 +268,7 @@ undone when it stops.
 | `messages` | `renderText(renderer)` replaces how message text renders in group chat, DMs, text chat and video chat; the first renderer to return content wins. `rewriteText(fn)` changes text before anything renders, for example to undo an encoding. `annotate(fn)` adds content after a message. `renderGroupTime(fn)` renders next to the sender's name. `hideAuthors(ids)`, `hideAuthorsWhere(predicate)`, `showLineBreaks()`, `flash(room, node, ms?)` for a passing status line in group chat, `refresh()`. |
 | `userList` | Group chat's online list: `sortBy(order)`, `filterBy(predicate)`, `addTools(render)`, where `render` gets `openProfile(id)`. |
 | `ui.accountMenu` | `addItem(render)` adds an item above Logout; `render` gets `close()`. |
-| `ui.chrome` | The site's header, navigation drawer, dashboard and popups: `addNavItem(render)`, `addDashboardSection(render)`, plus the fixes `headerTooltips()`, `largerHeaderTargets()`, `clearPopupClose()` and `clearerSupportForm()`. |
+| `ui.chrome` | The site's header, navigation drawer, dashboard, popups and browser tab: `addNavItem(render)`, `addDashboardSection(render)`, `tabTitle(title)`, `tabIcon(href)`, plus the fixes `headerTooltips()`, `largerHeaderTargets()`, `clearPopupClose()` and `clearerSupportForm()`. |
 | `ui.groupLayout` | Group chat's side panels on desktop: `arrange(placement, { animate? })`, `addPanelControl(render)`, `box()`, `setDragging(panel)`. Placement logic is in `site/panelLayout.ts`. |
 | `ui.sidebars` | `renderToggle(render)` replaces the side panel links on narrow screens. |
 | `ui.overlay(node)` | Mounts page-level UI (dialogs, panels) in an RxE shadow root. |

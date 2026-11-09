@@ -25,6 +25,8 @@ export interface ChromeApi {
   clearerSupportForm(): () => void;
   /** Keeps the browser tab's title at `title`, even as the site changes it on navigation. */
   tabTitle(title: string): () => void;
+  /** Replaces the browser tab's icon with `href` while registered. */
+  tabIcon(href: string): () => void;
   /** Adds an item at the end of the navigation drawer's list. */
   addNavItem(render: () => ReactNode): void;
   /** Adds a full-width section under the dashboard's cards. */
@@ -92,6 +94,29 @@ export function scopedChrome(scope: Scope): ChromeApi {
       return own(() => {
         observer.disconnect();
         document.title = original;
+      });
+    },
+    tabIcon(href) {
+      const ours = document.createElement("link");
+      ours.rel = "icon";
+      ours.href = href;
+      // The site's icons are hidden rather than removed, so stopping can put them back.
+      const theirs = new Map<HTMLLinkElement, string>();
+      const apply = () => {
+        for (const link of document.head.querySelectorAll<HTMLLinkElement>('link[rel~="icon"]')) {
+          if (link === ours || theirs.has(link)) continue;
+          theirs.set(link, link.rel);
+          link.rel = "rxe-hidden-icon";
+        }
+        if (ours.parentNode !== document.head) document.head.prepend(ours);
+      };
+      apply();
+      const observer = new MutationObserver(apply);
+      observer.observe(document.head, { childList: true });
+      return own(() => {
+        observer.disconnect();
+        ours.remove();
+        for (const [link, rel] of theirs) link.rel = rel;
       });
     },
     addNavItem(render) {
