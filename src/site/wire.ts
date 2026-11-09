@@ -70,10 +70,13 @@ export function serializeRoomEvent(event: ChatEvent, original: CableMessage): Ca
   return { ...original, messages: [...event.text], picture: event.picture };
 }
 
-/** The `speak` action `{ action: "speak", message, id, mode, picture? }` and `{ action: "typing", id }`. */
+/**
+ * The `speak` action `{ action: "speak", message, id, mode, picture? }` and `{ action: "typing", id }`.
+ * Group chat ids are strings (`"channel91"`), DM ids numbers.
+ */
 export function parseOutgoing(data: CableMessage): OutgoingEvent | null {
-  if (typeof data.id !== "string") return null;
-  const room = data.id as RoomId;
+  if (typeof data.id !== "string" && typeof data.id !== "number") return null;
+  const room = String(data.id) as RoomId;
   if (data.action === "typing") return { kind: "typing", room };
   if (data.action !== "speak") return null;
   return {

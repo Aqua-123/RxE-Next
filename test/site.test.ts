@@ -78,6 +78,18 @@ describe("wire translation", () => {
     ).toEqual({ ...data, message: "yo" });
   });
 
+  test("DM room ids are numbers on the wire and strings in the model", () => {
+    expect(parseOutgoing({ action: "typing", id: 12934566 })).toEqual({
+      kind: "typing",
+      room: "12934566" as never,
+    });
+    const data = { action: "speak", message: "hi", id: 12934566, mode: "private" };
+    expect(serializeOutgoing({ ...parseOutgoing(data)!, text: "yo" } as never, data)).toEqual({
+      ...data,
+      message: "yo",
+    });
+  });
+
   test("parses typing pings and leaves them untouched on the way out", () => {
     const data = { action: "typing", id: "channel97" };
     const event = parseOutgoing(data)!;
