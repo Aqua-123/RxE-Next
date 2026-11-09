@@ -15,6 +15,7 @@ import sendImages from "./features/send-images";
 import sendLinks from "./features/send-links";
 import settings from "./features/settings";
 import textStyles from "./features/text-styles";
+import userList from "./features/user-list";
 import { META } from "./meta";
 import { adoptTransport, cable, installCableTap } from "./platform/cable";
 import { log } from "./platform/log";
@@ -25,6 +26,7 @@ import { siteContext, whenSiteMounted, whenUserLoaded } from "./site/contexts";
 import { installChatSurface } from "./site/surfaces/chat";
 import { installComposerSurface } from "./site/surfaces/composer";
 import { installMessagesSurface } from "./site/surfaces/messages";
+import { installUserListSurface } from "./site/surfaces/userList";
 import { startThemeEngine } from "./themes/engine";
 
 /**
@@ -46,6 +48,7 @@ const FEATURES = [
   muteByName,
   hideTyping,
   joinLeaveNotices,
+  userList,
   avatarBorders,
   hideUpsells,
   settings,
@@ -59,6 +62,7 @@ function boot(): void {
   installChatSurface();
   installComposerSurface();
   installMessagesSurface();
+  installUserListSurface();
   startThemeEngine();
 
   // Registers raw patches synchronously, before the site's chunks load.

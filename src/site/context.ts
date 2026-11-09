@@ -10,6 +10,7 @@ import { type AccountMenuApi, scopedAccountMenu } from "./surfaces/accountMenu";
 import { type ChatApi, scopedChat } from "./surfaces/chat";
 import { type ComposerApi, scopedComposer } from "./surfaces/composer";
 import { type MessagesApi, scopedMessages } from "./surfaces/messages";
+import { scopedUserList, type UserListApi } from "./surfaces/userList";
 
 /** Everything a feature can touch. Every registration is tied to the feature's scope. */
 export interface FeatureContext<S extends SettingsSchema = SettingsSchema> {
@@ -17,6 +18,8 @@ export interface FeatureContext<S extends SettingsSchema = SettingsSchema> {
   chat: ChatApi;
   composer: ComposerApi;
   messages: MessagesApi;
+  /** Group chat's online list. */
+  userList: UserListApi;
   ui: {
     accountMenu: AccountMenuApi;
     /** Mounts page-level UI (dialogs, panels) inside an RxE shadow root. */
@@ -67,6 +70,7 @@ export function createFeatureContext(scope: Scope, feature: AnyFeature): Feature
     chat: scopedChat(scope),
     composer: scopedComposer(scope),
     messages: scopedMessages(scope),
+    userList: scopedUserList(scope),
     ui: {
       accountMenu: scopedAccountMenu(scope),
       overlay: scopedOverlay(scope),

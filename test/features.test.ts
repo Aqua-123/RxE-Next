@@ -5,6 +5,8 @@ import { isGif, parseImageLink } from "../src/features/inline-images/parse";
 import { compilePatterns } from "../src/features/mute-by-name";
 import { parse } from "../src/features/rich-text/parse";
 import { applyTextStyles } from "../src/features/text-styles/styles";
+import { SORTS } from "../src/features/user-list/sorts";
+import { parseUserId } from "../src/features/user-list/UserListTools";
 import { disguiseEmails, disguiseLinks, revealEmails, revealLinks } from "../src/site/disguise";
 
 describe("chat commands", () => {
@@ -143,5 +145,29 @@ describe("mute by name", () => {
     const patterns = compilePatterns("^bot\n\n  [broken\nfree nitro  ");
     expect(patterns.map(String)).toEqual(["/^bot/i", "/free nitro/i"]);
     expect(patterns[0]!.test("BOTman")).toBe(true);
+  });
+});
+
+describe("online list tools", () => {
+  const user = (name: string, created: string | null, karma = 0) =>
+    ({ name, createdAt: created ? new Date(created) : null, karma }) as never;
+  const ann = user("ann", "2020-01-01", 5);
+  const Bob = user("Bob", "2024-06-01", 50);
+  const cat = user("cat", null, 1);
+  const order = (id: keyof typeof SORTS, list: never[]) =>
+    [...list].sort(SORTS[id].order ?? (() => 0)).map((u: { name: string }) => u.name);
+
+  test("sorts by name ignoring case, by account age with unknown dates last, and by karma", () => {
+    expect(order("name-asc", [cat, Bob, ann])).toEqual(["ann", "Bob", "cat"]);
+    expect(order("newest", [ann, cat, Bob])).toEqual(["Bob", "ann", "cat"]);
+    expect(order("oldest", [cat, Bob, ann])).toEqual(["ann", "Bob", "cat"]);
+    expect(order("karma", [ann, cat, Bob])).toEqual(["Bob", "ann", "cat"]);
+  });
+
+  test("takes a user ID or a link with one in it", () => {
+    expect(parseUserId(" 14267520 ")).toBe(14267520 as never);
+    expect(parseUserId("emeraldchat.com/app/messages/?id=14267520")).toBe(14267520 as never);
+    expect(parseUserId("abc")).toBeNull();
+    expect(parseUserId("0")).toBeNull();
   });
 });
