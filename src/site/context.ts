@@ -10,6 +10,7 @@ import { type AccountMenuApi, scopedAccountMenu } from "./surfaces/accountMenu";
 import { type ChatApi, scopedChat } from "./surfaces/chat";
 import { type ComposerApi, scopedComposer } from "./surfaces/composer";
 import { type MessagesApi, scopedMessages } from "./surfaces/messages";
+import { type SidebarsApi, scopedSidebars } from "./surfaces/sidebars";
 import { scopedUserList, type UserListApi } from "./surfaces/userList";
 
 /** Everything a feature can touch. Every registration is tied to the feature's scope. */
@@ -21,6 +22,8 @@ export interface FeatureContext<S extends SettingsSchema = SettingsSchema> {
   /** Group chat's online list. */
   userList: UserListApi;
   ui: {
+    /** The side panel buttons on narrow screens. */
+    sidebars: SidebarsApi;
     accountMenu: AccountMenuApi;
     /** Mounts page-level UI (dialogs, panels) inside an RxE shadow root. */
     overlay(node: ReactNode): void;
@@ -72,6 +75,7 @@ export function createFeatureContext(scope: Scope, feature: AnyFeature): Feature
     messages: scopedMessages(scope),
     userList: scopedUserList(scope),
     ui: {
+      sidebars: scopedSidebars(scope),
       accountMenu: scopedAccountMenu(scope),
       overlay: scopedOverlay(scope),
       siteStyle: scopedSiteStyle(scope),

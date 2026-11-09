@@ -14,6 +14,7 @@ import richText from "./features/rich-text";
 import sendImages from "./features/send-images";
 import sendLinks from "./features/send-links";
 import settings from "./features/settings";
+import sidebarToggles from "./features/sidebar-toggles";
 import textStyles from "./features/text-styles";
 import userList from "./features/user-list";
 import { META } from "./meta";
@@ -26,6 +27,7 @@ import { siteContext, whenSiteMounted, whenUserLoaded } from "./site/contexts";
 import { installChatSurface } from "./site/surfaces/chat";
 import { installComposerSurface } from "./site/surfaces/composer";
 import { installMessagesSurface } from "./site/surfaces/messages";
+import { installSidebarsSurface } from "./site/surfaces/sidebars";
 import { installUserListSurface } from "./site/surfaces/userList";
 import { startThemeEngine } from "./themes/engine";
 
@@ -51,6 +53,7 @@ const FEATURES = [
   userList,
   avatarBorders,
   hideUpsells,
+  sidebarToggles,
   settings,
 ];
 
@@ -63,6 +66,7 @@ function boot(): void {
   installComposerSurface();
   installMessagesSurface();
   installUserListSurface();
+  installSidebarsSurface();
   startThemeEngine();
 
   // Registers raw patches synchronously, before the site's chunks load.
