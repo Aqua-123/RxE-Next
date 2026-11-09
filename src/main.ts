@@ -6,6 +6,7 @@ import embeds from "./features/embeds";
 import hideTyping from "./features/hide-typing";
 import inlineImages from "./features/inline-images";
 import joinLeaveNotices from "./features/join-leave-notices";
+import multilineInput from "./features/multiline-input";
 import muteByName from "./features/mute-by-name";
 import muteEverywhere from "./features/mute-everywhere";
 import richText from "./features/rich-text";
@@ -36,6 +37,7 @@ const FEATURES = [
   emailDefang,
   sendLinks,
   sendImages,
+  multilineInput,
   embeds,
   inlineImages,
   richText,
