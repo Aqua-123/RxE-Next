@@ -15,6 +15,7 @@ import sendImages from "./features/send-images";
 import sendLinks from "./features/send-links";
 import settings from "./features/settings";
 import sidebarToggles from "./features/sidebar-toggles";
+import siteVersionLinks from "./features/site-version-links";
 import textStyles from "./features/text-styles";
 import userList from "./features/user-list";
 import { META } from "./meta";
@@ -54,6 +55,7 @@ const FEATURES = [
   avatarBorders,
   hideUpsells,
   sidebarToggles,
+  siteVersionLinks,
   settings,
 ];
 
