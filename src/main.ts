@@ -9,6 +9,7 @@ import joinLeaveNotices from "./features/join-leave-notices";
 import muteByName from "./features/mute-by-name";
 import muteEverywhere from "./features/mute-everywhere";
 import richText from "./features/rich-text";
+import sendImages from "./features/send-images";
 import sendLinks from "./features/send-links";
 import settings from "./features/settings";
 import textStyles from "./features/text-styles";
@@ -34,6 +35,7 @@ const FEATURES = [
   textStyles,
   emailDefang,
   sendLinks,
+  sendImages,
   embeds,
   inlineImages,
   richText,

@@ -124,6 +124,10 @@ describe("inline images", () => {
       "https://i.ibb.co/Ab12/cat-pic.png"
     );
     expect(parseImageLink("https://imgur.com/abc1234")).toBe("https://i.imgur.com/abc1234.png");
+    expect(parseImageLink("https://sxcu.net/7V52RJZ3J.png")).toBe("https://sxcu.net/7V52RJZ3J.png");
+    expect(parseImageLink("https://files.catbox.moe/1xv7l8.png")).toBe(
+      "https://files.catbox.moe/1xv7l8.png"
+    );
     expect(isGif("https://i.imgur.com/abc1234.gif")).toBe(true);
   });
 

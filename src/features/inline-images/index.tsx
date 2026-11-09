@@ -35,7 +35,7 @@ export default defineFeature({
   id: "inline-images",
   name: "Inline images",
   description:
-    "Shows the picture when a message is just a link to Imgur, ImgBB or Reddit's image host. Other links stay links.",
+    "Shows the picture when a message is just a link to Imgur, sxcu.net, catbox.moe, ImgBB or Reddit's image host. Other links stay links.",
   category: "chat",
   settings: {
     gifs: setting.boolean({ label: "Show GIFs", default: true }),

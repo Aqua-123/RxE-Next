@@ -14,6 +14,8 @@ const MATCHES = ["*://emeraldchat.com/*", "*://www.emeraldchat.com/*"];
 const EXCLUDES = ["*://emeraldchat.com/old/*", "*://www.emeraldchat.com/old/*"];
 const EXTENSION_DIR = "dist/extension";
 const BUNDLE = `${EXTENSION_DIR}/rxe.js`;
+/** Image hosts the page can't reach because of CORS; the background worker uploads for it. */
+const HOST_PERMISSIONS = ["https://catbox.moe/*"];
 const USERSCRIPT = "dist/rxe-next.user.js";
 
 const manifest = {
@@ -35,7 +37,16 @@ const manifest = {
       run_at: "document_start",
       world: "MAIN",
     },
+    {
+      matches: MATCHES,
+      exclude_matches: EXCLUDES,
+      js: ["bridge.js"],
+      run_at: "document_start",
+    },
   ],
+  host_permissions: HOST_PERMISSIONS,
+  // Chrome reads service_worker, Firefox reads scripts.
+  background: { service_worker: "background.js", scripts: ["background.js"] },
   browser_specific_settings: {
     gecko: { id: "rxe-next@emeraldchat", strict_min_version: "128.0" },
   },
@@ -72,8 +83,12 @@ const emitArtifacts: Plugin = {
 };
 
 const options: BuildOptions = {
-  entryPoints: ["src/main.ts"],
-  outfile: BUNDLE,
+  entryPoints: {
+    rxe: "src/main.ts",
+    bridge: "src/extension/bridge.ts",
+    background: "src/extension/background.ts",
+  },
+  outdir: EXTENSION_DIR,
   bundle: true,
   format: "iife",
   target: "es2022",
