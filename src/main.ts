@@ -11,6 +11,7 @@ import { installWebpackTap } from "./platform/webpack";
 import { currentUser } from "./site/api";
 import { siteContext, whenSiteMounted } from "./site/contexts";
 import { installChatSurface } from "./site/surfaces/chat";
+import { installComposerSurface } from "./site/surfaces/composer";
 import { installMessagesSurface } from "./site/surfaces/messages";
 import { startThemeEngine } from "./themes/engine";
 
@@ -22,6 +23,7 @@ function boot(): void {
   installCableTap();
   installRouteTap();
   installChatSurface();
+  installComposerSurface();
   installMessagesSurface();
   startThemeEngine();
 
