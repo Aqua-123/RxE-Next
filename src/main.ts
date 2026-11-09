@@ -8,6 +8,7 @@ import hideTyping from "./features/hide-typing";
 import hideUpsells from "./features/hide-upsells";
 import inlineImages from "./features/inline-images";
 import joinLeaveNotices from "./features/join-leave-notices";
+import messageTimes from "./features/message-times";
 import multilineInput from "./features/multiline-input";
 import muteByName from "./features/mute-by-name";
 import muteEverywhere from "./features/mute-everywhere";
@@ -53,6 +54,7 @@ const FEATURES = [
   hideTyping,
   joinLeaveNotices,
   deliveryStatus,
+  messageTimes,
   userList,
   avatarBorders,
   hideUpsells,
