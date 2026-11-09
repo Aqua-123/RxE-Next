@@ -4,14 +4,22 @@ import { AVATAR_CLASSES } from "@/site/surfaces/messages";
 
 const GENDERS = ["male", "female", "other"] as const;
 
-/** Colors come from the theme's --rxe-gender-* tokens, so every theme can restyle them. */
+/**
+ * Drawn inside the avatar (an inset shadow on ::after, above the image) so scroll
+ * containers can't clip it. Colors come from the theme's --rxe-gender-* tokens.
+ */
 function bordersCss(style: "ring" | "glow", width: number): string {
-  return GENDERS.map((gender) => {
+  const avatar = `.${AVATAR_CLASSES.root}`;
+  const base = `${avatar}::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none}`;
+  const rings = GENDERS.map((gender) => {
     const color = `var(--rxe-gender-${gender})`;
     const shadow =
-      style === "glow" ? `0 0 ${width * 3}px ${width}px ${color}` : `0 0 0 ${width}px ${color}`;
-    return `.${AVATAR_CLASSES.root}.${AVATAR_CLASSES.gender(gender)}{box-shadow:${shadow};border-radius:9999px}`;
-  }).join("\n");
+      style === "glow"
+        ? `inset 0 0 ${width * 3}px ${width}px ${color}`
+        : `inset 0 0 0 ${width}px ${color}`;
+    return `${avatar}.${AVATAR_CLASSES.gender(gender)}::after{box-shadow:${shadow}}`;
+  });
+  return [`${avatar}{position:relative}`, base, ...rings].join("\n");
 }
 
 export default defineFeature({

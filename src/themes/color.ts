@@ -89,6 +89,77 @@ export function alphaOf(color: Hex): number {
   return parseColor(color)?.a ?? 1;
 }
 
+/** WCAG contrast ratio between two colors, 1–21 (alpha ignored). */
+export function contrastRatio(a: Hex, b: Hex): number {
+  const [light, dark] = [luminance(a), luminance(b)].sort((x, y) => y - x) as [number, number];
+  return (light + 0.05) / (dark + 0.05);
+}
+
+/** Moves `color` toward `target` until it reaches `minimum` contrast against every background. */
+export function ensureContrast(
+  color: Hex,
+  target: Hex,
+  backgrounds: readonly Hex[],
+  minimum: number
+): Hex {
+  let result = color;
+  for (let step = 1; step <= 20; step += 1) {
+    if (backgrounds.every((background) => contrastRatio(result, background) >= minimum))
+      return result;
+    result = mix(target, color, step / 20);
+  }
+  return result;
+}
+
+interface Hsl {
+  h: number;
+  s: number;
+  l: number;
+}
+
+function toHsl({ r, g, b }: Rgba): Hsl {
+  const [red, green, blue] = [r / 255, g / 255, b / 255];
+  const max = Math.max(red, green, blue);
+  const min = Math.min(red, green, blue);
+  const l = (max + min) / 2;
+  if (max === min) return { h: 0, s: 0, l };
+  const d = max - min;
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  const h =
+    max === red
+      ? (green - blue) / d + (green < blue ? 6 : 0)
+      : max === green
+        ? (blue - red) / d + 2
+        : (red - green) / d + 4;
+  return { h: h / 6, s, l };
+}
+
+function fromHsl({ h, s, l }: Hsl, a: number): Rgba {
+  if (s === 0) return { r: l * 255, g: l * 255, b: l * 255, a };
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+  const p = 2 * l - q;
+  const channel = (t: number) => {
+    const x = t < 0 ? t + 1 : t > 1 ? t - 1 : t;
+    if (x < 1 / 6) return p + (q - p) * 6 * x;
+    if (x < 1 / 2) return q;
+    if (x < 2 / 3) return p + (q - p) * (2 / 3 - x) * 6;
+    return p;
+  };
+  return { r: channel(h + 1 / 3) * 255, g: channel(h) * 255, b: channel(h - 1 / 3) * 255, a };
+}
+
+/**
+ * Shifts lightness by `delta` (−1…1) keeping the hue: a shade of the same color.
+ * Saturation tapers as the shade moves away, so tints of vivid colors don't turn neon.
+ */
+export function shade(color: Hex, delta: number): Hex {
+  const rgba = parseColor(color)!;
+  const hsl = toHsl(rgba);
+  const l = Math.min(1, Math.max(0, hsl.l + delta));
+  const s = hsl.s * Math.max(0, 1 - Math.abs(delta) * 2);
+  return toHex(fromHsl({ ...hsl, s, l }, rgba.a));
+}
+
 /** Relative luminance (WCAG), 0–1. */
 export function luminance(color: Hex): number {
   const { r, g, b } = parseColor(color)!;

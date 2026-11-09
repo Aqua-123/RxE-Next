@@ -1,7 +1,7 @@
 import { SITE_TOKENS } from "@/site/tokens";
-import { opaquePart, withAlpha } from "./color";
+import { alphaOf, contrastRatio, opaquePart, withAlpha } from "./color";
 import { fontStack, type Theme } from "./model";
-import { resolveTokens } from "./resolve";
+import { contrastText, resolveTokens } from "./resolve";
 import { RXE_TOKENS } from "./tokens";
 
 export interface CompileInput {
@@ -11,6 +11,11 @@ export interface CompileInput {
   /** Site panels that get the glass effect. */
   glassTargets: readonly string[];
 }
+
+/** Accent tokens the site uses as backgrounds; each gets a readable `--rxe-on-*` text color. */
+export const ACCENT_TOKENS: readonly string[] = SITE_TOKENS.filter(
+  (token) => token.role === "accent"
+).map((token) => token.name);
 
 const SURFACE_TOKENS = new Set(
   SITE_TOKENS.filter((token) => token.role === "surface").map((token) => token.name)
@@ -34,6 +39,16 @@ export function compileTheme({ theme, wallpaperUrl, glassTargets }: CompileInput
       wallpaper && SURFACE_TOKENS.has(name) ? withAlpha(value, wallpaper.surfaceOpacity) : value;
     return `--${name}:${shown};`;
   });
+  // Text on accent backgrounds: the theme's text color while it still reads (3:1, the AA level
+  // for bold UI text), otherwise ink or white. Translucent accents show the surface beneath.
+  const text = tokens["primary-content"]!;
+  for (const name of ACCENT_TOKENS) {
+    const value = tokens[name]!;
+    const keepsText = alphaOf(value) < 0.6 || contrastRatio(text, value) >= 3;
+    declarations.push(
+      `--rxe-on-${name}:${keepsText ? "var(--primary-content)" : contrastText(value)};`
+    );
+  }
   declarations.push(`--rxe-font:${fontStack(theme.font)};`);
 
   const blocks = [`:root:root{${declarations.join("")}}`];

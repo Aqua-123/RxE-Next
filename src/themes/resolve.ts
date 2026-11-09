@@ -1,6 +1,6 @@
 import { SITE_TOKENS } from "@/site/tokens";
 import { ANCHORS, RXE_DEFAULTS } from "./builtin/defaults";
-import { type Hex, luminance, mix, normalize, withAlpha } from "./color";
+import { contrastRatio, ensureContrast, type Hex, mix, normalize, shade, withAlpha } from "./color";
 import type { SeedName, Theme } from "./model";
 
 /** Every token's value for a theme: the base's defaults with the theme's overrides on top. */
@@ -14,48 +14,76 @@ export function resolveTokens(theme: Pick<Theme, "base" | "tokens">): Record<str
 
 const BLACK = ANCHORS.black as Hex;
 const WHITE = ANCHORS.white as Hex;
+const INK = ANCHORS.ink as Hex;
+
+/** WCAG AA for body text. */
+const READABLE = 4.5;
+
+/**
+ * Lightness steps for the surface ramp, as shades of the surface color itself so the
+ * theme's hue carries into chips, hovers and borders. Light themes step darker.
+ */
+const SURFACE_STEPS: Record<string, number> = {
+  "base1-550": 0.02,
+  "base1-500": 0.05,
+  "base1-800": 0.07,
+  "base1-700": 0.09,
+  "base1-750": 0.11,
+  "base1-450": 0.1,
+  "base1-400": 0.12,
+  "base1-350": 0.14,
+  "base1-300": 0.17,
+};
+
+/** Surfaces the site puts muted text on (chips use base1-300, panels base1-600). */
+const MUTED_TEXT_BACKGROUNDS = ["base1-850", "base1-600", "base1-500", "base1-300"] as const;
+
+/** Muted text shades, each pushed toward the main text color until it reads on every surface. */
+function mutedText(text: Hex, tokens: Record<string, Hex>): Record<string, Hex> {
+  const background = tokens["base1-850"]!;
+  const surfaces = MUTED_TEXT_BACKGROUNDS.map((name) => tokens[name]!);
+  const muted = (weight: number) =>
+    ensureContrast(mix(text, background, weight), text, surfaces, READABLE);
+  return {
+    "base1-100": muted(0.72),
+    "base1-150": muted(0.64),
+    "base1-200": muted(0.58),
+    "base1-250": muted(0.6),
+  };
+}
 
 /**
  * The editor's simple mode: one seed color regenerates the ramp it anchors, using the
- * theme's other current colors so the result stays coherent.
+ * theme's other current colors so the result stays coherent and readable.
  */
 export function tokensFromSeed(theme: Theme, seed: SeedName, value: Hex): Record<string, Hex> {
   const current = resolveTokens(theme);
   const text = seed === "text" ? value : current["primary-content"]!;
-  const background = seed === "background" ? value : current["base1-850"]!;
-  const toward = (amount: number, color = text) => mix(color, value, amount);
-  const deeper = theme.base === "dark" ? BLACK : WHITE;
+  // Light themes step darker, and in smaller steps: dark-on-light differences read stronger.
+  const direction = theme.base === "dark" ? 1 : -0.6;
 
   switch (seed) {
-    case "background":
-      return {
+    case "background": {
+      const tokens = {
         "base1-850": value,
-        "base1-900": mix(deeper, value, 0.35),
-        "base1-650": toward(0.04),
+        "base1-900": mix(theme.base === "dark" ? BLACK : WHITE, value, 0.35),
+        "base1-650": shade(value, 0.03 * direction),
       };
-    case "surface":
-      return {
-        "base1-600": value,
-        "base1-550": toward(0.03),
-        "base1-500": toward(0.07),
-        "base1-700": toward(0.12),
-        "base1-750": toward(0.16),
-        "base1-800": toward(0.1),
-        "base1-450": toward(0.14),
-        "base1-400": toward(0.18),
-        "base1-350": toward(0.22),
-        "base1-300": toward(0.28),
-      };
+      return { ...tokens, ...mutedText(text, { ...current, ...tokens }) };
+    }
+    case "surface": {
+      const tokens: Record<string, Hex> = { "base1-600": value };
+      for (const [name, step] of Object.entries(SURFACE_STEPS))
+        tokens[name] = shade(value, step * direction);
+      return { ...tokens, ...mutedText(text, { ...current, ...tokens }) };
+    }
     case "text":
       return {
         "primary-content": value,
         "primary-content-10": withAlpha(value, 0.1),
         "primary-content-30": withAlpha(value, 0.3),
         "primary-content-70": withAlpha(value, 0.73),
-        "base1-100": mix(value, background, 0.72),
-        "base1-150": mix(value, background, 0.64),
-        "base1-200": mix(value, background, 0.58),
-        "base1-250": mix(value, background, 0.6),
+        ...mutedText(value, current),
       };
     case "accent": {
       const lighter = (amount: number) => mix(WHITE, value, amount);
@@ -75,9 +103,9 @@ export function tokensFromSeed(theme: Theme, seed: SeedName, value: Hex): Record
   }
 }
 
-/** Dark ink or white, whichever reads better on `color`. */
+/** Dark ink or white, whichever contrasts more with `color`. */
 export function contrastText(color: Hex): Hex {
-  return (luminance(color) > 0.4 ? ANCHORS.ink : ANCHORS.white) as Hex;
+  return contrastRatio(INK, color) >= contrastRatio(WHITE, color) ? INK : WHITE;
 }
 
 /** Builds a complete theme's tokens from seeds, applied in a stable order. */

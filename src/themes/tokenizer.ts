@@ -54,9 +54,22 @@ interface StyleLike {
   getPropertyPriority(property: string): string;
 }
 
-/** The token-based rewrite of one style rule's hardcoded colors, or null if there are none. */
+const ACCENTS = new Set(
+  SITE_TOKENS.filter((token) => token.role === "accent").map((token) => token.name)
+);
+const TOKEN_REFERENCE = /^var\(--([\w-]+)\)$/;
+
+/** Text colors that mean "the theme's text color", which may not read on an accent background. */
+const isDefaultText = (value: string) =>
+  value === "" || /^var\(--primary-content(?:-\d+)?\)$/.test(value);
+
+/**
+ * The token-based rewrite of one style rule, or null if nothing changes:
+ *   1. hardcoded colors equal to a token's default become `var(--token)`
+ *   2. text on an accent background becomes that accent's readable `--rxe-on-*` color
+ */
 export function tokenizeRule(selector: string, style: StyleLike, index: TokenIndex): string | null {
-  const declarations: string[] = [];
+  const declarations = new Map<string, string>();
   for (let i = 0; i < style.length; i += 1) {
     const property = style.item(i);
     const value = style.getPropertyValue(property).trim();
@@ -67,9 +80,21 @@ export function tokenizeRule(selector: string, style: StyleLike, index: TokenInd
     );
     if (!token) continue;
     const important = style.getPropertyPriority(property) ? "!important" : "";
-    declarations.push(`${property}:var(--${token.name})${important}`);
+    declarations.set(property, `var(--${token.name})${important}`);
   }
-  return declarations.length ? `${selector}{${declarations.join(";")}}` : null;
+
+  const background =
+    declarations.get("background-color") ?? style.getPropertyValue("background-color").trim();
+  const accent = TOKEN_REFERENCE.exec(background.replace("!important", ""))?.[1];
+  if (accent && ACCENTS.has(accent) && isDefaultText(style.getPropertyValue("color").trim())) {
+    declarations.set(
+      "color",
+      `var(--rxe-on-${accent})${style.getPropertyPriority("color") ? "!important" : ""}`
+    );
+  }
+
+  if (declarations.size === 0) return null;
+  return `${selector}{${[...declarations].map(([property, value]) => `${property}:${value}`).join(";")}}`;
 }
 
 /** Rewrites every rule in a stylesheet, keeping `@media`/`@supports` wrappers. */

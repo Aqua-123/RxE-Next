@@ -1,7 +1,14 @@
 import { describe, expect, test } from "bun:test";
 import { SITE_TOKENS } from "../src/site/tokens";
 import { BUILTIN_THEMES, DEFAULT_THEME } from "../src/themes/builtin";
-import { type Hex, mix, normalize, parseColor, withAlpha } from "../src/themes/color";
+import {
+  contrastRatio,
+  type Hex,
+  mix,
+  normalize,
+  parseColor,
+  withAlpha,
+} from "../src/themes/color";
 import { compileTheme } from "../src/themes/compile";
 import { type Theme, themeProblem } from "../src/themes/model";
 import { resolveTokens, tokensFromSeed } from "../src/themes/resolve";
@@ -46,6 +53,42 @@ describe("seeds", () => {
   test("a text seed derives translucent and muted text", () => {
     const tokens = tokensFromSeed(theme(), "text", hex("#ffffff"));
     expect(parseColor(tokens["primary-content-10"]!)?.a).toBeCloseTo(0.1, 1);
+  });
+});
+
+describe("generated palettes stay themed and readable", () => {
+  const midnight = BUILTIN_THEMES.find((entry) => entry.id === "builtin:midnight")!;
+  const sakura = BUILTIN_THEMES.find((entry) => entry.id === "builtin:sakura")!;
+
+  test("surface shades keep the surface's hue", () => {
+    const chip = parseColor(resolveTokens(midnight)["base1-300"]!)!;
+    expect(chip.b).toBeGreaterThan(chip.r + 15);
+  });
+
+  test("muted text reads on every surface it sits on, in dark and light themes", () => {
+    for (const theme of [midnight, sakura]) {
+      const tokens = resolveTokens(theme);
+      for (const surface of ["base1-850", "base1-600", "base1-500", "base1-300"]) {
+        expect(contrastRatio(tokens["base1-100"]!, tokens[surface]!)).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  });
+
+  test("every opaque accent gets an on-color that reads on it", () => {
+    const css = compileTheme({ theme: midnight, wallpaperUrl: null, glassTargets: [] });
+    const tokens = resolveTokens(midnight);
+    const on = /--rxe-on-primary-500:(#[0-9a-f]+);/.exec(css)![1] as Hex;
+    expect(contrastRatio(on, tokens["primary-500"]!)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  test("the default theme keeps the site's own text on accents where it reads", () => {
+    const css = compileTheme({ theme: DEFAULT_THEME, wallpaperUrl: null, glassTargets: [] });
+    expect(css).toContain("--rxe-on-primary-500:var(--primary-content);");
+  });
+
+  test("light-theme surface shades stay soft", () => {
+    const chip = parseColor(resolveTokens(sakura)["base1-300"]!)!;
+    expect(Math.max(chip.r, chip.g, chip.b) - Math.min(chip.r, chip.g, chip.b)).toBeLessThan(70);
   });
 });
 
@@ -109,6 +152,29 @@ describe("tokenizer", () => {
     );
     expect(
       tokenizeRule(".b", style({ "background-color": "rgb(255, 255, 255)" }), index)
+    ).toBeNull();
+  });
+
+  test("text on an accent background gets that accent's readable on-color", () => {
+    expect(
+      tokenizeRule(
+        ".chip.active",
+        style({ "background-color": "var(--primary-500)", color: "var(--primary-content)" }),
+        index
+      )
+    ).toBe(".chip.active{color:var(--rxe-on-primary-500)}");
+    expect(tokenizeRule(".badge", style({ "background-color": "rgb(233, 66, 53)" }), index)).toBe(
+      ".badge{background-color:var(--error-500);color:var(--rxe-on-error-500)}"
+    );
+  });
+
+  test("an explicit, non-default text color on an accent is the site's choice and stays", () => {
+    expect(
+      tokenizeRule(
+        ".gold",
+        style({ "background-color": "var(--gold-btn-bg)", color: "var(--black)" }),
+        index
+      )
     ).toBeNull();
   });
 

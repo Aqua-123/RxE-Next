@@ -13,7 +13,6 @@
 
 @theme {
   --animate-shimmer: shimmer 4s linear infinite;
-  --animate-sparkle: sparkle-twinkle 2.4s ease-in-out infinite, sparkle-tint 4s linear infinite;
 
   @keyframes shimmer {
     from {
@@ -21,29 +20,6 @@
     }
     to {
       background-position: 0% 0;
-    }
-  }
-
-  @keyframes sparkle-twinkle {
-    0%,
-    100% {
-      transform: scale(0.85) rotate(0deg);
-    }
-    50% {
-      transform: scale(1.1) rotate(20deg);
-    }
-  }
-
-  @keyframes sparkle-tint {
-    0%,
-    100% {
-      color: var(--rxe-accent-1);
-    }
-    33% {
-      color: var(--rxe-accent-2);
-    }
-    66% {
-      color: var(--rxe-accent-3);
     }
   }
 }
