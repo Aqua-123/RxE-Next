@@ -33,3 +33,12 @@ export interface OutgoingMessage {
 
 /** What you send: messages, and the typing pings the site sends while you type. */
 export type OutgoingEvent = OutgoingMessage | { kind: "typing"; room: RoomId };
+
+/** A DM thread, as listed on the Messages page. */
+export interface Conversation {
+  user: User & { online: boolean };
+  /** The last message's text, or null when it was a picture. */
+  preview: string | null;
+  fromMe: boolean;
+  unread: boolean;
+}

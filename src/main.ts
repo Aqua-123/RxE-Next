@@ -12,6 +12,7 @@ import messageTimes from "./features/message-times";
 import multilineInput from "./features/multiline-input";
 import muteByName from "./features/mute-by-name";
 import muteEverywhere from "./features/mute-everywhere";
+import recentConversations from "./features/recent-conversations";
 import richText from "./features/rich-text";
 import sendImages from "./features/send-images";
 import sendLinks from "./features/send-links";
@@ -62,6 +63,7 @@ const FEATURES = [
   sidebarToggles,
   siteVersionLinks,
   sitePolish,
+  recentConversations,
   settings,
 ];
 

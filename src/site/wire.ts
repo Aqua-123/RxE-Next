@@ -1,5 +1,5 @@
 import type { CableMessage, ChannelIdentifier } from "@/platform/cable";
-import type { ChatEvent, Gender, OutgoingEvent, RoomId, User, UserId } from "./model";
+import type { ChatEvent, Conversation, Gender, OutgoingEvent, RoomId, User, UserId } from "./model";
 
 /**
  * EmeraldChat's wire formats and their translation to the domain model. The only
@@ -90,4 +90,28 @@ export function parseOutgoing(data: CableMessage): OutgoingEvent | null {
 export function serializeOutgoing(event: OutgoingEvent, original: CableMessage): CableMessage {
   if (event.kind !== "message") return original;
   return { ...original, message: event.text, picture: event.picture ?? undefined };
+}
+
+/** `GET /api/v1/user/friends/messages`: `{ messages: [{ user_data, message: { content, picture, seen, self_msg } }] }`. */
+export function parseConversations(body: unknown): Conversation[] {
+  const list = (body as { messages?: unknown } | null)?.messages;
+  if (!Array.isArray(list)) return [];
+  return list.flatMap((entry) => {
+    const raw = entry as {
+      user_data?: { online?: unknown };
+      message?: Record<string, unknown> | null;
+    };
+    const user = parseUser(raw.user_data);
+    if (!user) return [];
+    const message = raw.message ?? {};
+    const content = typeof message.content === "string" && message.content ? message.content : null;
+    return [
+      {
+        user: { ...user, online: Boolean(raw.user_data?.online) },
+        preview: content,
+        fromMe: Boolean(message.self_msg),
+        unread: !message.self_msg && message.seen === false,
+      },
+    ];
+  });
 }
