@@ -75,6 +75,8 @@ export interface ComposerApi {
   onFiles(handler: (files: File[]) => void): void;
   /** Sends `text` from the chat box on screen, exactly as if you typed it and pressed Enter. */
   send(text: string): boolean;
+  /** Puts `text` in the chat box on screen, ready to edit and send. */
+  draft(text: string): boolean;
   /** Whether this chat has the site's own image upload (Gold only; not in group chat). */
   hasSiteUpload(): boolean;
   /** Hands a file to the site's own image upload, if this chat has one. */
@@ -260,6 +262,15 @@ export function scopedComposer(scope: Scope): ComposerApi {
     },
     onFiles: (handler) => scope.add(fileHandlers.add(scope, handler)),
     send: sendText,
+    draft(text) {
+      const box = currentInput();
+      if (!box || box.disabled) return false;
+      box.value = text;
+      box.focus();
+      box.setSelectionRange(text.length, text.length);
+      fitRows(box);
+      return true;
+    },
     hasSiteUpload: () => siteUpload() !== null,
     sendWithSiteUpload,
     multiline() {

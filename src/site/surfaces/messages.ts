@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { createElement, Fragment, type ReactNode } from "react";
 import { Pipeline, type Scope } from "@/core/scope";
 import { injectStyle } from "@/platform/dom";
 import { attempt } from "@/platform/log";
@@ -24,7 +24,7 @@ const MESSAGE_ROW = '[class*="room_global_textContainer__"]';
 /** The text of one message line, in every chat. */
 const MESSAGE_TEXT = '[class*="_textContent__"]';
 
-const NOTICE_CLASS = "rxe-notice";
+const FLASH_CLASS = "rxe-flash";
 
 const PATCHES: Patch[] = [
   {
@@ -53,14 +53,24 @@ const PATCHES: Patch[] = [
     },
   },
   {
+    // Group chat, DMs and text/video chat render the sender as `<span className=username>{name}{badges}</span>`.
+    find: /\.username\),children:\[null==/,
+    all: true,
+    replace: {
+      match:
+        /(className:"".concat\(\i\(\)\.username\),children:\[null==(\i)\?void 0:null===\(\i=\2\.user\)\|\|void 0===\i\?void 0:\i\.display_name,)/g,
+      with: "$1$rxe.messages.groupTime($2),",
+    },
+  },
+  {
     // Group chat's list is `<ul>{groups?.map(group => <li/>)}<div ref={bottom}/></ul>`;
-    // wrap the mapped rows so notices can sit between them.
+    // wrap the mapped rows so a passing line can follow them.
     find: '"GroupChatView"',
     replace: [
       {
         match:
           /(\(0,\i\.jsxs\)\("ul",\{ref:\i,className:"".concat\(\i\(\)\.chatTextsList\),children:\[)(null==(\i)\?void 0:\3\.map\()/,
-        with: "$1$rxe.messages.withNotices($3,$2",
+        with: "$1$rxe.messages.withFlash($3,$2",
       },
       {
         match:
@@ -78,13 +88,22 @@ function currentGroupRoom(): RoomId | null {
 }
 
 export interface RenderedMessage {
+  /** After rewrites (e.g. disguised links revealed). */
   text: string;
+  /** Exactly as the site has it, which is what was sent. */
+  raw: string;
   /** Null where the site doesn't have the author at hand (video chat sidebar). */
   author: User | null;
 }
 
 /** Returns the message's replacement content, or null to leave it as plain text. */
 export type TextRenderer = (text: string, message: RenderedMessage) => ReactNode | null;
+
+/**
+ * Content shown after a message's text, or null for none. Return false to keep a slot
+ * that may fill in later (after `refresh()`): plain messages otherwise stay plain text.
+ */
+export type Annotator = (message: RenderedMessage) => ReactNode | false | null;
 
 export interface MessagesApi {
   /** Renderers run in feature order; the first that returns content wins. */
@@ -94,6 +113,10 @@ export interface MessagesApi {
    * undo an encoding. Covers history too, as it renders.
    */
   rewriteText(rewrite: (text: string) => string | undefined): void;
+  /** Adds content after message text, such as a delivery status. Annotators run in feature order. */
+  annotate(annotator: Annotator): void;
+  /** Renders something next to each sender's name in every chat, given when they wrote. */
+  renderGroupTime(render: (time: Date) => ReactNode): void;
   /** Re-renders every message with the current renderers (e.g. after a setting changed). */
   refresh(): void;
   /** Hides already-rendered messages by these authors. Replaces this feature's previous set. */
@@ -105,11 +128,16 @@ export interface MessagesApi {
   hideAuthorsWhere(predicate: (author: User) => boolean): void;
   /** Keeps line breaks in message text, which the site collapses into spaces. */
   showLineBreaks(): void;
-  /** Shows a line in the group chat list at the current point of the conversation, if `room` is on screen. */
-  notice(room: RoomId, content: ReactNode): void;
+  /**
+   * Shows one passing line under group chat's last message, if `room` is on screen,
+   * like the old RxE's status line: the next one replaces it, and it goes after `ms`.
+   */
+  flash(room: RoomId, content: ReactNode, ms?: number): void;
 }
 
 const renderers = new Pipeline<TextRenderer>();
+const annotators = new Pipeline<Annotator>();
+const timeRenderers = new Pipeline<(time: Date) => ReactNode>();
 const rewrites = new Pipeline<(text: string) => string | undefined>();
 
 function rewriteText(text: string): string {
@@ -166,6 +194,21 @@ function renderMessageText(message: RenderedMessage): ReactNode {
   return message.text;
 }
 
+function annotationsFor(message: RenderedMessage): Array<ReactNode | false> {
+  const annotations: Array<ReactNode | false> = [];
+  for (const annotator of annotators) {
+    const annotation = attempt("message annotator", () => annotator(message));
+    if (annotation !== null && annotation !== undefined) annotations.push(annotation);
+  }
+  return annotations;
+}
+
+function renderMessage(message: RenderedMessage): ReactNode {
+  const annotations = annotationsFor(message);
+  const content = renderMessageText(message);
+  return annotations.length ? createElement(Fragment, null, content, ...annotations) : content;
+}
+
 function subscribeRenderers(listener: () => void): () => void {
   renderersListeners.add(listener);
   return () => {
@@ -182,7 +225,7 @@ function createTextHost(react: SiteReact) {
   const getVersion = () => renderersVersion;
 
   // biome-ignore lint/correctness/noComponentHookFactories: built against the site's React instance, which only exists at runtime.
-  return function RxeMessageText({ text, author }: RenderedMessage) {
+  return function RxeMessageText({ text, raw, author }: RenderedMessage) {
     const host = react.useRef<HTMLElement>(null);
     const root = react.useRef<MountedRoot | null>(null);
     const version = react.useSyncExternalStore(subscribeRenderers, getVersion);
@@ -196,51 +239,47 @@ function createTextHost(react: SiteReact) {
     }, []);
     // `version` re-runs the renderers when features register or unregister.
     react.useLayoutEffect(() => {
-      root.current?.render(renderMessageText({ text, author }));
-    }, [text, author, version]);
+      root.current?.render(renderMessage({ text, raw, author }));
+    }, [text, raw, author, version]);
 
     return react.createElement("rxe-text", { ref: host });
   };
 }
 
-interface Notice {
+interface Flash {
   key: string;
   owner: Scope;
   room: RoomId;
   content: ReactNode;
-  /** How many message groups the list had when the notice arrived; it renders after them. */
-  after: number;
 }
 
-const MAX_NOTICES = 100;
-let notices: readonly Notice[] = [];
-let noticeCount = 0;
-let renderedGroups = 0;
-const noticeListeners = new Set<() => void>();
+let flash: Flash | null = null;
+let flashCount = 0;
+let flashTimer: ReturnType<typeof setTimeout> | undefined;
+const flashListeners = new Set<() => void>();
 
-function setNotices(next: readonly Notice[]): void {
-  notices = next;
-  for (const listener of noticeListeners) listener();
+function setFlash(next: Flash | null): void {
+  flash = next;
+  for (const listener of flashListeners) listener();
 }
 
-function subscribeNotices(listener: () => void): () => void {
-  noticeListeners.add(listener);
+function subscribeFlash(listener: () => void): () => void {
+  flashListeners.add(listener);
   return () => {
-    noticeListeners.delete(listener);
+    flashListeners.delete(listener);
   };
 }
 
-/** The site's `<li>` for one notice, with RxE content in a shadow root. */
-function createNoticeItem(react: SiteReact) {
+/** The site's `<li>` for the passing line, with RxE content in a shadow root. */
+function createFlashItem(react: SiteReact) {
   // biome-ignore lint/correctness/noComponentHookFactories: built against the site's React instance, which only exists at runtime.
-  return function RxeNotice({ content }: { content: ReactNode }) {
+  return function RxeFlash({ content }: { content: ReactNode }) {
     const item = react.useRef<HTMLLIElement>(null);
     const root = react.useRef<MountedRoot | null>(null);
 
     react.useLayoutEffect(() => {
       const element = item.current!;
       root.current = mountRoot(element, "append");
-      root.current.render(content);
       // Keep following the conversation if the reader was at the bottom.
       const list = element.parentElement;
       if (list) {
@@ -256,38 +295,91 @@ function createNoticeItem(react: SiteReact) {
       root.current?.render(content);
     }, [content]);
 
-    return react.createElement("li", { ref: item, className: NOTICE_CLASS });
+    return react.createElement("li", { ref: item, className: FLASH_CLASS });
   };
 }
 
-function createNoticeList(react: SiteReact) {
-  const NoticeItem = createNoticeItem(react);
-  const getNotices = () => notices;
+function createMessageList(react: SiteReact) {
+  const FlashItem = createFlashItem(react);
+  const getFlash = () => flash;
 
   // biome-ignore lint/correctness/noComponentHookFactories: built against the site's React instance, which only exists at runtime.
-  return function RxeNoticeList({ rows }: { rows: readonly ReactNode[] }) {
-    const all = react.useSyncExternalStore(subscribeNotices, getNotices);
-    const room = currentGroupRoom();
-    const visible = all.filter((notice) => notice.room === room);
-    if (visible.length === 0) return rows;
-
-    const item = (notice: Notice) =>
-      react.createElement(NoticeItem, { key: notice.key, content: notice.content });
-    const out: ReactNode[] = [];
-    let next = 0;
-    for (let index = 0; index <= rows.length; index++) {
-      while (next < visible.length && Math.min(visible[next]!.after, rows.length) <= index) {
-        out.push(item(visible[next]!));
-        next += 1;
-      }
-      if (index < rows.length) out.push(rows[index]);
-    }
-    return out;
+  return function RxeMessageList({ rows }: { rows: readonly ReactNode[] }) {
+    const current = react.useSyncExternalStore(subscribeFlash, getFlash);
+    if (!current || current.room !== currentGroupRoom()) return rows;
+    return [
+      ...rows,
+      react.createElement(FlashItem, { key: current.key, content: current.content }),
+    ];
   };
 }
 
 let textHost: ReturnType<typeof createTextHost> | undefined;
-let noticeList: ReturnType<typeof createNoticeList> | undefined;
+let timeHost: ReturnType<typeof createTimeHost> | undefined;
+
+/** History has a UTC `timestamp` (no zone, nanoseconds); text chat lines a `timestamp` in ms. */
+function parseTime(value: unknown): Date | null {
+  if (typeof value === "number") return new Date(value);
+  if (typeof value !== "string" || !value) return null;
+  // `2026-11-09T14:44:26.751387383`: Date only reads up to milliseconds.
+  const trimmed = value.replace(/(\.\d{3})\d+/, "$1");
+  const time = new Date(/[zZ]|[+-]\d\d:?\d\d$/.test(trimmed) ? trimmed : `${trimmed}Z`);
+  return Number.isNaN(time.getTime()) ? null : time;
+}
+
+/**
+ * Live messages carry no time, and the site rebuilds a group's object whenever a line
+ * is merged in, so they are dated by when RxE first saw the group's first line.
+ */
+const firstSeen = new Map<string, number>();
+
+function groupTimeOf(group: unknown): Date | null {
+  const value = group as {
+    timestamp?: unknown;
+    messages?: unknown[];
+    user?: { id?: unknown };
+  } | null;
+  if (!value || typeof value !== "object") return null;
+  const first = value.messages?.[0];
+  const stamped =
+    parseTime(value.timestamp) ??
+    parseTime(
+      first && typeof first === "object" ? (first as { timestamp?: unknown }).timestamp : null
+    );
+  if (stamped) return stamped;
+  const firstText =
+    typeof first === "string" ? first : (first as { msg?: unknown } | undefined)?.msg;
+  const key = `${String(value.user?.id)}:${String(firstText)}`;
+  if (!firstSeen.has(key)) {
+    if (firstSeen.size > 2000) firstSeen.clear();
+    firstSeen.set(key, Date.now());
+  }
+  return new Date(firstSeen.get(key)!);
+}
+
+function createTimeHost(react: SiteReact) {
+  const getVersion = () => renderersVersion;
+  // biome-ignore lint/correctness/noComponentHookFactories: built against the site's React instance, which only exists at runtime.
+  return function RxeGroupTime({ time }: { time: number }) {
+    const host = react.useRef<HTMLElement>(null);
+    const root = react.useRef<MountedRoot | null>(null);
+    const version = react.useSyncExternalStore(subscribeRenderers, getVersion);
+    react.useLayoutEffect(() => {
+      root.current = mountRoot(host.current!, "append");
+      return () => {
+        root.current?.unmount();
+        root.current = null;
+      };
+    }, []);
+    // biome-ignore lint/correctness/useExhaustiveDependencies: `version` changes when renderers do.
+    react.useLayoutEffect(() => {
+      const [render] = timeRenderers;
+      root.current?.render(render ? attempt("group time", () => render(new Date(time))) : null);
+    }, [time, version]);
+    return react.createElement("rxe-text", { ref: host });
+  };
+}
+let messageList: ReturnType<typeof createMessageList> | undefined;
 
 /** Called from the patched site code. Must never throw. */
 const hooks = {
@@ -295,14 +387,22 @@ const hooks = {
     if (typeof value !== "string") return value;
     const author = authorOf(group);
     const text = rewriteText(value);
-    if (renderers.size === 0) return text;
-    const message = { text, author };
-    // Plain messages stay plain text nodes; only messages a renderer changes get an RxE root.
-    if (renderMessageText(message) === text) return text;
+    if (renderers.size === 0 && annotators.size === 0) return text;
+    const message = { text, raw: value, author };
+    // Plain messages stay plain text nodes; only messages a feature changes get an RxE root.
+    if (renderMessageText(message) === text && annotationsFor(message).length === 0) return text;
     const react = siteReact();
     if (!react) return text;
     textHost ??= createTextHost(react);
     return react.createElement(textHost, message);
+  },
+  groupTime(group: unknown): unknown {
+    if (timeRenderers.size === 0) return null;
+    const time = groupTimeOf(group);
+    const react = siteReact();
+    if (!time || !react) return null;
+    timeHost ??= createTimeHost(react);
+    return react.createElement(timeHost, { time: time.getTime() });
   },
   avatarClass(raw: unknown): string {
     const user = raw && typeof raw === "object" ? parseUser(raw) : null;
@@ -316,14 +416,13 @@ const hooks = {
       .filter(Boolean)
       .join(" ");
   },
-  /** Always wraps, so the first notice doesn't remount every row. */
-  withNotices(groups: unknown, rows: unknown): unknown {
+  /** Always wraps, so the first passing line doesn't remount every row. */
+  withFlash(groups: unknown, rows: unknown): unknown {
     if (!Array.isArray(groups) || !Array.isArray(rows)) return rows;
-    renderedGroups = groups.length;
     const react = siteReact();
     if (!react) return rows;
-    noticeList ??= createNoticeList(react);
-    return react.createElement(noticeList, { rows: rows as ReactNode[] });
+    messageList ??= createMessageList(react);
+    return react.createElement(messageList, { rows: rows as ReactNode[] });
   },
 };
 
@@ -331,8 +430,7 @@ const hooks = {
 export function installMessagesSurface(): void {
   registerPatches("surface:messages", PATCHES);
   exposeSurface("messages", hooks);
-  // The list spaces rows 15px apart; notices are lighter and sit closer.
-  injectStyle("messages-notices", `.${NOTICE_CLASS}{list-style:none;margin-block:-8px}`);
+  injectStyle("messages-flash", `.${FLASH_CLASS}{list-style:none}`);
 }
 
 const hiddenByScope = new Map<Scope, ReadonlySet<UserId>>();
@@ -361,8 +459,9 @@ export function scopedMessages(scope: Scope): MessagesApi {
     const hadPredicate = hidePredicates.delete(scope);
     if (hadPredicate) recomputeHiddenWhere();
     else if (hadIds) renderHidden();
-    if (notices.some((notice) => notice.owner === scope)) {
-      setNotices(notices.filter((notice) => notice.owner !== scope));
+    if (flash?.owner === scope) {
+      clearTimeout(flashTimer);
+      setFlash(null);
     }
   });
   return {
@@ -382,6 +481,22 @@ export function scopedMessages(scope: Scope): MessagesApi {
         renderersChanged();
       });
     },
+    annotate(annotator) {
+      const remove = annotators.add(scope, annotator);
+      renderersChanged();
+      scope.add(() => {
+        remove();
+        renderersChanged();
+      });
+    },
+    renderGroupTime(render) {
+      const remove = timeRenderers.add(scope, render);
+      renderersChanged();
+      scope.add(() => {
+        remove();
+        renderersChanged();
+      });
+    },
     refresh: renderersChanged,
     hideAuthors(ids) {
       hiddenByScope.set(scope, new Set(ids));
@@ -394,20 +509,16 @@ export function scopedMessages(scope: Scope): MessagesApi {
       hidePredicates.set(scope, predicate);
       recomputeHiddenWhere();
     },
-    notice(room, content) {
+    flash(room, content, ms = 5000) {
       // Group chat only listens to the room on screen; anything else has nowhere to go.
       if (room !== currentGroupRoom()) return;
-      noticeCount += 1;
-      const notice = {
-        key: `rxe-notice-${noticeCount}`,
-        owner: scope,
-        room,
-        content,
-        after: renderedGroups,
-      };
-      // Notices only live as long as their room is on screen.
-      const kept = notices.filter((other) => other.room === room).slice(-(MAX_NOTICES - 1));
-      setNotices([...kept, notice]);
+      flashCount += 1;
+      clearTimeout(flashTimer);
+      const shown: Flash = { key: `rxe-flash-${flashCount}`, owner: scope, room, content };
+      setFlash(shown);
+      flashTimer = setTimeout(() => {
+        if (flash === shown) setFlash(null);
+      }, ms);
     },
   };
 }

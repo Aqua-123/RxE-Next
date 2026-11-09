@@ -4,11 +4,13 @@ import type { RoomId, UserId } from "@/site/model";
 
 /** Connections drop and come back within seconds; only a leave that lasts this long is real. */
 const LEAVE_GRACE_MS = 15_000;
+/** How long the line stays, as in the old RxE. */
+const SHOWN_MS = 5_000;
 
-function Notice({ name, action }: { name: string; action: "joined" | "left" }) {
+function Status({ name, action }: { name: string; action: "joined" | "left" }) {
   return (
-    <p className="px-3 text-muted-foreground text-xs italic">
-      <span className="font-medium not-italic">{name || "Someone"}</span> {action} the chat
+    <p className="text-left text-muted-foreground text-xs italic">
+      User <span className="font-medium not-italic">{name || "Someone"}</span> {action} the chat.
     </p>
   );
 }
@@ -17,7 +19,7 @@ export default defineFeature({
   id: "join-leave-notices",
   name: "Join and leave notices",
   description:
-    "Shows a line in group chat when someone joins or leaves. Leaves show after 15 seconds, so quick reconnects don't count.",
+    "Shows “User X joined the chat.” under group chat's last message for a few seconds. Each one replaces the last, so it never piles up.",
   category: "chat",
   settings: {
     joins: setting.boolean({ label: "Joins", default: true }),
@@ -35,6 +37,7 @@ export default defineFeature({
       const id = key(room, user.id);
 
       if (event.kind === "joined") {
+        // Back within the grace period: they never really left.
         const cancelLeave = leaving.get(id);
         if (cancelLeave) {
           cancelLeave();
@@ -43,8 +46,9 @@ export default defineFeature({
         }
         if (present.has(id)) return undefined;
         present.add(id);
-        if (settings.get().joins)
-          messages.notice(room, <Notice name={user.name} action="joined" />);
+        if (settings.get().joins) {
+          messages.flash(room, <Status name={user.name} action="joined" />, SHOWN_MS);
+        }
         return undefined;
       }
 
@@ -54,8 +58,9 @@ export default defineFeature({
         after(LEAVE_GRACE_MS, () => {
           leaving.delete(id);
           present.delete(id);
-          if (settings.get().leaves)
-            messages.notice(room, <Notice name={user.name} action="left" />);
+          if (settings.get().leaves) {
+            messages.flash(room, <Status name={user.name} action="left" />, SHOWN_MS);
+          }
         })
       );
       return undefined;

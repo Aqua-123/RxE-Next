@@ -80,7 +80,7 @@ where a feature sits decides, for example, which text renderer claims a message 
 |---|---|
 | `chat` | See every room event before the site does (domain `ChatEvent`s), and rewrite or `drop` them. Same for outgoing messages and typing pings. |
 | `composer` | `transform(text)` rewrites what you type in any chat box on Enter, before the site sends it and shows it to you. |
-| `messages` | `renderText(renderer)` replaces how message text renders in group chat, DMs, text chat and video chat, via module patches. `rewriteText(fn)` to undo encodings before anything renders, `hideAuthors(ids)`, `hideAuthorsWhere(predicate)`, `notice(room, node)` for a line in group chat, `refresh()`. |
+| `messages` | `renderText(renderer)` replaces how message text renders in group chat, DMs, text chat and video chat, via module patches. `rewriteText(fn)` to undo encodings before anything renders, `hideAuthors(ids)`, `hideAuthorsWhere(predicate)`, `flash(room, node)` for a passing status line in group chat, `refresh()`. |
 | `ui` | `accountMenu.addItem`, `overlay(node)` for page-level UI, `siteStyle(id, css)` for site stylesheets (for example against `AVATAR_CLASSES`). |
 | `site` | Current user, muted users. |
 
