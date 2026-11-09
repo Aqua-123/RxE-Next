@@ -8,6 +8,7 @@ import { applyTextStyles } from "../src/features/text-styles/styles";
 import { SORTS } from "../src/features/user-list/sorts";
 import { parseUserId } from "../src/features/user-list/UserListTools";
 import { disguiseEmails, disguiseLinks, revealEmails, revealLinks } from "../src/site/disguise";
+import { arrange, moveTo, SITE_PLACEMENT, slotAt } from "../src/site/panelLayout";
 
 describe("chat commands", () => {
   test("expand a whole-message command, sending any text after it first", () => {
@@ -169,5 +170,41 @@ describe("online list tools", () => {
     expect(parseUserId("emeraldchat.com/app/messages/?id=14267520")).toBe(14267520 as never);
     expect(parseUserId("abc")).toBeNull();
     expect(parseUserId("0")).toBeNull();
+  });
+});
+
+describe("side panel layout", () => {
+  test("the site's layout is two left panels, the chat taking the rest", () => {
+    expect(arrange(SITE_PLACEMENT)).toEqual({
+      columns: "minmax(200px, 18%) minmax(0, 1fr)",
+      chat: { column: 2, row: "1 / span 2" },
+      channels: { column: 1, row: "1" },
+      online: { column: 1, row: "2" },
+    });
+  });
+
+  test("a panel alone on its side gets the full height", () => {
+    const layout = arrange({ channels: "left-top", online: "right-bottom" });
+    expect(layout.columns).toBe("minmax(200px, 18%) minmax(0, 1fr) minmax(200px, 18%)");
+    expect(layout.channels).toEqual({ column: 1, row: "1 / span 2" });
+    expect(layout.online).toEqual({ column: 3, row: "1 / span 2" });
+    expect(arrange({ channels: "right-top", online: "right-bottom" }).chat.column).toBe(1);
+  });
+
+  test("dropping onto the other panel swaps them", () => {
+    expect(moveTo(SITE_PLACEMENT, "online", "left-top")).toEqual({
+      channels: "left-bottom",
+      online: "left-top",
+    });
+    expect(moveTo(SITE_PLACEMENT, "channels", "right-bottom")).toEqual({
+      channels: "right-bottom",
+      online: "left-bottom",
+    });
+  });
+
+  test("reads the drop target from the pointer's quarter of the chat area", () => {
+    const box = { left: 0, top: 50, width: 1000, height: 800 };
+    expect(slotAt(100, 100, box)).toBe("left-top");
+    expect(slotAt(900, 800, box)).toBe("right-bottom");
   });
 });

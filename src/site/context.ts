@@ -10,6 +10,7 @@ import { type AccountMenuApi, scopedAccountMenu } from "./surfaces/accountMenu";
 import { type ChatApi, scopedChat } from "./surfaces/chat";
 import { type ChromeApi, scopedChrome } from "./surfaces/chrome";
 import { type ComposerApi, scopedComposer } from "./surfaces/composer";
+import { type GroupLayoutApi, scopedGroupLayout } from "./surfaces/groupLayout";
 import { type MessagesApi, scopedMessages } from "./surfaces/messages";
 import { type SidebarsApi, scopedSidebars } from "./surfaces/sidebars";
 import { scopedUserList, type UserListApi } from "./surfaces/userList";
@@ -27,6 +28,8 @@ export interface FeatureContext<S extends SettingsSchema = SettingsSchema> {
     sidebars: SidebarsApi;
     /** The site's header, navigation drawer, dashboard, popups and forms. */
     chrome: ChromeApi;
+    /** Where group chat's two side panels sit on desktop. */
+    groupLayout: GroupLayoutApi;
     accountMenu: AccountMenuApi;
     /** Mounts page-level UI (dialogs, panels) inside an RxE shadow root. */
     overlay(node: ReactNode): void;
@@ -80,6 +83,7 @@ export function createFeatureContext(scope: Scope, feature: AnyFeature): Feature
     ui: {
       sidebars: scopedSidebars(scope),
       chrome: scopedChrome(scope),
+      groupLayout: scopedGroupLayout(scope),
       accountMenu: scopedAccountMenu(scope),
       overlay: scopedOverlay(scope),
       siteStyle: scopedSiteStyle(scope),
