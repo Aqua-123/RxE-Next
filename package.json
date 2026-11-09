@@ -4,6 +4,8 @@
   "private": true,
   "type": "module",
   "description": "RxE for the Next.js version of EmeraldChat",
+  "author": "Aqua & Teriyaki",
+  "icon": "https://i.imgur.com/cJMHEbM.png",
   "scripts": {
     "build": "bun build.ts",
     "dev": "bun build.ts --watch",

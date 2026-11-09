@@ -5,6 +5,8 @@ import { cssPlugin } from "./scripts/css-plugin";
 const pkg = JSON.parse(await readFile("package.json", "utf8")) as {
   version: string;
   description: string;
+  author: string,
+  icon: string,
 };
 const watchMode = process.argv.includes("--watch");
 
@@ -58,6 +60,8 @@ const userscriptHeader = [
   "// @namespace    rxe-next",
   `// @version      ${pkg.version}`,
   `// @description  ${pkg.description}`,
+  `// @author       ${pkg.author}`,
+  `// @icon         ${pkg.icon}`,
   ...MATCHES.map((pattern) => `// @match        ${pattern}`),
   ...EXCLUDES.map((pattern) => `// @exclude      ${pattern}`),
   "// @run-at       document-start",
