@@ -118,6 +118,16 @@ describe("compileTheme", () => {
     expect(css).toContain('url("https://x.test/a.png")');
   });
 
+  test("glass lifts raised panels so their dropdowns stay above the page", () => {
+    const css = compileTheme({
+      theme: theme({ glass: true }),
+      wallpaperUrl: null,
+      glassTargets: [{ selector: ".header", raised: true }, { selector: ".panel" }],
+    });
+    expect(css).toContain(".header,.panel{backdrop-filter:blur(14px) saturate(140%)}");
+    expect(css).toContain(".header{position:relative;z-index:1}");
+  });
+
   test("custom CSS comes last", () => {
     const css = compileTheme({
       theme: theme({ customCss: ".x{color:var(--rxe-link)}" }),

@@ -8,8 +8,8 @@ export interface CompileInput {
   theme: Theme;
   /** Resolved wallpaper image URL (uploads are object URLs), or null for none. */
   wallpaperUrl: string | null;
-  /** Site panels that get the glass effect. */
-  glassTargets: readonly string[];
+  /** Site panels that get the glass effect; `raised` ones are lifted above page content. */
+  glassTargets: readonly { selector: string; raised?: boolean }[];
 }
 
 /** Accent tokens the site uses as backgrounds; each gets a readable `--rxe-on-*` text color. */
@@ -72,7 +72,12 @@ export function compileTheme({ theme, wallpaperUrl, glassTargets }: CompileInput
   }
 
   if (theme.glass && glassTargets.length) {
-    blocks.push(`${glassTargets.join(",")}{backdrop-filter:blur(14px) saturate(140%)}`);
+    blocks.push(
+      `${glassTargets.map((target) => target.selector).join(",")}{backdrop-filter:blur(14px) saturate(140%)}`
+    );
+    const raised = glassTargets.filter((target) => target.raised).map((target) => target.selector);
+    // Above non-positioned page content, below the site's real overlays.
+    if (raised.length) blocks.push(`${raised.join(",")}{position:relative;z-index:1}`);
   }
 
   if (theme.customCss.trim()) blocks.push(theme.customCss);
