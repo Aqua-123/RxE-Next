@@ -10,12 +10,18 @@ export default defineFeature({
   settings: {
     ads: setting.boolean({
       label: "Ad banners",
-      description: "On the match pages and in chats.",
+      description: "On the match pages and in chats, and the Gold banner on Meet.",
       default: true,
     }),
     menu: setting.boolean({
       label: "Upgrade items in the account menu",
       description: "Emerald Gold, Platinum, Premium and Buy Karma.",
+      default: true,
+    }),
+    locked: setting.boolean({
+      label: "Locked features",
+      description:
+        "Gold-only match filters shown greyed out, and the Premium “Create your own channel” button.",
       default: true,
     }),
     goldUpload: setting.boolean({
@@ -28,12 +34,13 @@ export default defineFeature({
   when: (env) => env.user !== null,
   setup({ settings, site, ui }) {
     const isGold = site.currentUser()?.isGold ?? false;
-    settings.watch(({ ads, menu, goldUpload }) => {
+    settings.watch(({ ads, menu, locked, goldUpload }) => {
       ui.siteStyle(
         "hidden",
         hideCss([
           ...(ads ? UPSELLS.ads : []),
           ...(menu ? UPSELLS.menu : []),
+          ...(locked ? UPSELLS.locked : []),
           ...(goldUpload && !isGold ? UPSELLS.goldUpload : []),
         ])
       );
