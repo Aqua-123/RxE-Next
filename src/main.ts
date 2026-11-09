@@ -1,8 +1,15 @@
 import { registerFeatures, updateEnvironment } from "./core/runtime";
 import avatarBorders from "./features/avatar-borders";
+import chatCommands from "./features/chat-commands";
+import embeds from "./features/embeds";
+import hideTyping from "./features/hide-typing";
+import inlineImages from "./features/inline-images";
+import joinLeaveNotices from "./features/join-leave-notices";
+import muteByName from "./features/mute-by-name";
 import muteEverywhere from "./features/mute-everywhere";
 import richText from "./features/rich-text";
 import settings from "./features/settings";
+import textStyles from "./features/text-styles";
 import { META } from "./meta";
 import { adoptTransport, cable, installCableTap } from "./platform/cable";
 import { log } from "./platform/log";
@@ -15,7 +22,24 @@ import { installComposerSurface } from "./site/surfaces/composer";
 import { installMessagesSurface } from "./site/surfaces/messages";
 import { startThemeEngine } from "./themes/engine";
 
-const FEATURES = [richText, muteEverywhere, avatarBorders, settings];
+/**
+ * Order matters: surfaces run handlers in this order. Composer transforms expand
+ * commands before styling text; embeds and images claim a lone link before rich text
+ * turns it into a plain link.
+ */
+const FEATURES = [
+  chatCommands,
+  textStyles,
+  embeds,
+  inlineImages,
+  richText,
+  muteEverywhere,
+  muteByName,
+  hideTyping,
+  joinLeaveNotices,
+  avatarBorders,
+  settings,
+];
 
 function boot(): void {
   // All taps must be in place before any site script runs.

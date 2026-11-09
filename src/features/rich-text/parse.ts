@@ -46,8 +46,9 @@ const RULES: Rule[] = [
   { pattern: /\*\*(.+?)\*\*/, build: container("bold") },
   { pattern: /__(.+?)__/, build: container("underline") },
   { pattern: /~~(.+?)~~/, build: container("strike") },
-  { pattern: /(?<![*\w])\*(?!\s)(.+?)(?<!\s)\*(?![*\w])/, build: container("italic") },
-  { pattern: /(?<![_\w])_(?!\s)(.+?)(?<!\s)_(?![_\w])/, build: container("italic") },
+  // A backslash before the opening mark keeps it literal, as in ¯\_(ツ)_/¯.
+  { pattern: /(?<![*\w\\])\*(?!\s)(.+?)(?<!\s)\*(?![*\w])/, build: container("italic") },
+  { pattern: /(?<![_\w\\])_(?!\s)(.+?)(?<!\s)_(?![_\w])/, build: container("italic") },
 ];
 
 function mentionRule(options: ParseOptions): Rule | null {
