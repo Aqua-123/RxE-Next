@@ -21,6 +21,7 @@ import settings from "./features/settings";
 import sidebarToggles from "./features/sidebar-toggles";
 import sitePolish from "./features/site-polish";
 import siteVersionLinks from "./features/site-version-links";
+import tabTitle from "./features/tab-title";
 import textStyles from "./features/text-styles";
 import userList from "./features/user-list";
 import { META } from "./meta";
@@ -64,6 +65,7 @@ const FEATURES = [
   sidebarToggles,
   panelLayout,
   siteVersionLinks,
+  tabTitle,
   sitePolish,
   recentConversations,
   settings,

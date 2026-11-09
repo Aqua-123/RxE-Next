@@ -23,6 +23,8 @@ export interface ChromeApi {
   clearPopupClose(): () => void;
   /** A helpful placeholder for the support form's reason field. */
   clearerSupportForm(): () => void;
+  /** Keeps the browser tab's title at `title`, even as the site changes it on navigation. */
+  tabTitle(title: string): () => void;
   /** Adds an item at the end of the navigation drawer's list. */
   addNavItem(render: () => ReactNode): void;
   /** Adds a full-width section under the dashboard's cards. */
@@ -78,6 +80,20 @@ export function scopedChrome(scope: Scope): ChromeApi {
           setAttribute(input, "placeholder", "What do you need help with?")
         )
       ),
+    tabTitle(title) {
+      const original = document.title;
+      const apply = () => {
+        if (document.title !== title) document.title = title;
+      };
+      apply();
+      // Next.js rewrites <title> (or swaps the element) on every navigation.
+      const observer = new MutationObserver(apply);
+      observer.observe(document.head, { childList: true, subtree: true, characterData: true });
+      return own(() => {
+        observer.disconnect();
+        document.title = original;
+      });
+    },
     addNavItem(render) {
       scope.add(
         watch(NAV_LIST, (list) => {

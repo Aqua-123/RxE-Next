@@ -139,6 +139,9 @@ and Backup.
 - **Header and popup fixes:** tooltips on the header's unlabelled icons, bigger
   header buttons on phones, a clear Close button on popups, and a clearer
   support form. Each fix has its own switch.
+- **Your name as the tab title:** the browser tab shows your display name,
+  like "Teriyaki - RxE Next 0.1.0", instead of the site's "Omegle alternative
+  for…", so you can tell accounts apart. The version can be turned off.
 - **Older versions in the account menu:** removes the header's "Choose Theme"
   button, which only links to the site's Legacy and Classic versions, and puts
   those links in the account menu under "Older versions".
