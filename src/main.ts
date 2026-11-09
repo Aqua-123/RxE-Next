@@ -1,6 +1,7 @@
 import { registerFeatures, updateEnvironment } from "./core/runtime";
 import avatarBorders from "./features/avatar-borders";
 import chatCommands from "./features/chat-commands";
+import deliveryStatus from "./features/delivery-status";
 import emailDefang from "./features/email-defang";
 import embeds from "./features/embeds";
 import hideTyping from "./features/hide-typing";
@@ -51,6 +52,7 @@ const FEATURES = [
   muteByName,
   hideTyping,
   joinLeaveNotices,
+  deliveryStatus,
   userList,
   avatarBorders,
   hideUpsells,
