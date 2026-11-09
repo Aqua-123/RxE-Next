@@ -7,7 +7,7 @@ export default defineFeature({
   id: "user-list",
   name: "Online list tools",
   description:
-    "Sort group chat's online list by name, account age or karma, and open anyone's profile by their user ID.",
+    "Sort and search group chat's online list, and open anyone's profile by their user ID.",
   category: "chat",
   settings: {
     sort: setting.select({
@@ -21,11 +21,22 @@ export default defineFeature({
   },
   setup({ settings, userList }) {
     settings.watch(({ sort }) => userList.sortBy(SORTS[sort].order));
+    const search = (query: string) => {
+      const needle = query.trim().toLowerCase();
+      userList.filterBy(
+        needle
+          ? (user) =>
+              user.name.toLowerCase().includes(needle) ||
+              user.username.toLowerCase().includes(needle)
+          : null
+      );
+    };
     userList.addTools((tools) => (
       <UserListTools
         tools={tools}
         sort={settings.get().sort}
         onSort={(sort) => settings.set("sort", sort)}
+        onSearch={search}
       />
     ));
   },

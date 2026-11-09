@@ -41,11 +41,14 @@ export interface UserListTools {
 export interface UserListApi {
   /** Orders the online list. Features earlier in FEATURES win; null keeps the site's order. */
   sortBy(order: UserOrder | null): void;
+  /** Shows only users matching `predicate`; null shows everyone. */
+  filterBy(predicate: ((user: User) => boolean) | null): void;
   /** Renders controls under the list's "N Online" heading. */
   addTools(render: (tools: UserListTools) => ReactNode): void;
 }
 
 const orders = new Map<Scope, UserOrder | null>();
+const filters = new Map<Scope, (user: User) => boolean>();
 const toolRenderers = new Pipeline<(tools: UserListTools) => ReactNode>();
 let version = 0;
 const listeners = new Set<() => void>();
@@ -78,10 +81,21 @@ function userOf(raw: unknown): User | null {
   return parsed.get(raw) ?? null;
 }
 
+function visible(users: readonly unknown[]): unknown[] {
+  if (filters.size === 0) return [...users];
+  return users.filter((raw) => {
+    const user = userOf(raw);
+    return (
+      !user ||
+      [...filters.values()].every((keep) => attempt("user filter", () => keep(user)) ?? true)
+    );
+  });
+}
+
 function sorted(users: readonly unknown[]): unknown[] {
   const order = currentOrder();
-  if (!order) return [...users];
-  return [...users].sort((a, b) => {
+  if (!order) return visible(users);
+  return visible(users).sort((a, b) => {
     const left = userOf(a);
     const right = userOf(b);
     if (!left || !right) return 0;
@@ -199,11 +213,17 @@ export function installUserListSurface(): void {
 
 export function scopedUserList(scope: Scope): UserListApi {
   scope.add(() => {
-    if (orders.delete(scope)) changed();
+    const hadOrder = orders.delete(scope);
+    if (filters.delete(scope) || hadOrder) changed();
   });
   return {
     sortBy(order) {
       orders.set(scope, order);
+      changed();
+    },
+    filterBy(predicate) {
+      if (predicate) filters.set(scope, predicate);
+      else filters.delete(scope);
       changed();
     },
     addTools(render) {
