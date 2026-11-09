@@ -17,6 +17,7 @@ import sendImages from "./features/send-images";
 import sendLinks from "./features/send-links";
 import settings from "./features/settings";
 import sidebarToggles from "./features/sidebar-toggles";
+import sitePolish from "./features/site-polish";
 import siteVersionLinks from "./features/site-version-links";
 import textStyles from "./features/text-styles";
 import userList from "./features/user-list";
@@ -60,6 +61,7 @@ const FEATURES = [
   hideUpsells,
   sidebarToggles,
   siteVersionLinks,
+  sitePolish,
   settings,
 ];
 

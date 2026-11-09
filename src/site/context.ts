@@ -8,6 +8,7 @@ import { scopedOverlay } from "@/ui/overlay";
 import { type SiteApi, scopedSite } from "./api";
 import { type AccountMenuApi, scopedAccountMenu } from "./surfaces/accountMenu";
 import { type ChatApi, scopedChat } from "./surfaces/chat";
+import { type ChromeApi, scopedChrome } from "./surfaces/chrome";
 import { type ComposerApi, scopedComposer } from "./surfaces/composer";
 import { type MessagesApi, scopedMessages } from "./surfaces/messages";
 import { type SidebarsApi, scopedSidebars } from "./surfaces/sidebars";
@@ -24,6 +25,8 @@ export interface FeatureContext<S extends SettingsSchema = SettingsSchema> {
   ui: {
     /** The side panel buttons on narrow screens. */
     sidebars: SidebarsApi;
+    /** The site's header, navigation drawer, dashboard, popups and forms. */
+    chrome: ChromeApi;
     accountMenu: AccountMenuApi;
     /** Mounts page-level UI (dialogs, panels) inside an RxE shadow root. */
     overlay(node: ReactNode): void;
@@ -76,6 +79,7 @@ export function createFeatureContext(scope: Scope, feature: AnyFeature): Feature
     userList: scopedUserList(scope),
     ui: {
       sidebars: scopedSidebars(scope),
+      chrome: scopedChrome(scope),
       accountMenu: scopedAccountMenu(scope),
       overlay: scopedOverlay(scope),
       siteStyle: scopedSiteStyle(scope),
