@@ -56,10 +56,11 @@ test("features see domain events and can drop them; disposing the scope removes 
 
 test("outgoing messages can be rewritten before they are sent", () => {
   const scope = new Scope("commands");
-  scopedChat(scope).outgoing((message) => ({
-    ...message,
-    text: message.text.replace(".shrug", "¯\\_(ツ)_/¯"),
-  }));
+  scopedChat(scope).outgoing((event) =>
+    event.kind === "message"
+      ? { ...event, text: event.text.replace(".shrug", "¯\\_(ツ)_/¯") }
+      : undefined
+  );
   const { socket } = connect();
 
   (socket as unknown as WebSocket).send(

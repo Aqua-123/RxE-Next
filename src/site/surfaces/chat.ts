@@ -1,27 +1,31 @@
-import type { Scope } from "@/core/scope";
+import { Pipeline, type Scope } from "@/core/scope";
 import { cable } from "@/platform/cable";
 import { attempt } from "@/platform/log";
-import type { ChatEvent, OutgoingMessage } from "../model";
-import { parseRoomEvent, parseSpeak, serializeRoomEvent, serializeSpeak } from "../wire";
+import type { ChatEvent, OutgoingEvent } from "../model";
+import { parseOutgoing, parseRoomEvent, serializeOutgoing, serializeRoomEvent } from "../wire";
 
 /** Return from a chat handler to stop the event: incoming ones never reach the site, outgoing ones are never sent. */
 export const drop = Symbol("drop");
 
 type IncomingHandler = (event: ChatEvent) => ChatEvent | typeof drop | undefined;
-type OutgoingHandler = (message: OutgoingMessage) => OutgoingMessage | typeof drop | undefined;
+type OutgoingHandler = (event: OutgoingEvent) => OutgoingEvent | typeof drop | undefined;
 
 export interface ChatApi {
   /** Sees every room event (group, DM, 1-on-1) before the site does; may rewrite or drop it. */
   incoming(handler: IncomingHandler): void;
-  /** Sees every message you send before it leaves; may rewrite or drop it. */
+  /**
+   * Sees every message and typing ping you send before it leaves; may rewrite or drop it.
+   * The site has already shown your message to you by then; to change what you see
+   * too, use `composer.transform`.
+   */
   outgoing(handler: OutgoingHandler): void;
 }
 
-const incomingHandlers = new Set<IncomingHandler>();
-const outgoingHandlers = new Set<OutgoingHandler>();
+const incomingHandlers = new Pipeline<IncomingHandler>();
+const outgoingHandlers = new Pipeline<OutgoingHandler>();
 
 function runPipeline<T>(
-  handlers: Set<(value: T) => T | typeof drop | undefined>,
+  handlers: Pipeline<(value: T) => T | typeof drop | undefined>,
   initial: T
 ): T | typeof drop {
   let value = initial;
@@ -46,21 +50,17 @@ export function installChatSurface(): void {
 
   cable.onOutgoing((command) => {
     if (command.command !== "message" || outgoingHandlers.size === 0) return;
-    const message = parseSpeak(command.data);
-    if (!message) return;
-    const result = runPipeline(outgoingHandlers, message);
+    const event = parseOutgoing(command.data);
+    if (!event) return;
+    const result = runPipeline(outgoingHandlers, event);
     if (result === drop) return "drop";
-    if (result !== message) return { data: serializeSpeak(result, command.data) };
+    if (result !== event) return { data: serializeOutgoing(result, command.data) };
   });
 }
 
 export function scopedChat(scope: Scope): ChatApi {
-  const register = <H>(handlers: Set<H>, handler: H) => {
-    handlers.add(handler);
-    scope.add(() => handlers.delete(handler));
-  };
   return {
-    incoming: (handler) => register(incomingHandlers, handler),
-    outgoing: (handler) => register(outgoingHandlers, handler),
+    incoming: (handler) => scope.add(incomingHandlers.add(scope, handler)),
+    outgoing: (handler) => scope.add(outgoingHandlers.add(scope, handler)),
   };
 }

@@ -25,7 +25,11 @@ export type ChatEvent =
   | { kind: "left"; room: RoomId; user: User };
 
 export interface OutgoingMessage {
+  kind: "message";
   room: RoomId;
   text: string;
   picture: string | null;
 }
+
+/** What you send: messages, and the typing pings the site sends while you type. */
+export type OutgoingEvent = OutgoingMessage | { kind: "typing"; room: RoomId };

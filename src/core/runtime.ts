@@ -31,6 +31,8 @@ interface Slot {
   state: FeatureState;
   /** Whether the feature's raw patches were registered at boot. */
   patched: boolean;
+  /** Position in registration order; surfaces run handlers in this order. */
+  order: number;
 }
 
 const slots = new Map<string, Slot>();
@@ -71,7 +73,7 @@ function desiredState(slot: Slot): FeatureState {
 }
 
 function start(slot: Slot): FeatureState {
-  const scope = new Scope(slot.feature.id);
+  const scope = new Scope(slot.feature.id, slot.order);
   try {
     const self = slot.feature.setup(createFeatureContext(scope, slot.feature));
     if (self) exposeToPatches(slot.feature.id, self);
@@ -111,7 +113,7 @@ export function registerFeatures(features: readonly AnyFeature[]): void {
   for (const feature of features) {
     const patched = Boolean(feature.patches?.length) && isEnabled(feature);
     if (patched) registerPatches(feature.id, feature.patches!);
-    slots.set(feature.id, { feature, state: { kind: "off" }, patched });
+    slots.set(feature.id, { feature, state: { kind: "off" }, patched, order: slots.size });
   }
   publish();
 }

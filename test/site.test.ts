@@ -1,11 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { parseMutedUserIds } from "../src/site/prefs";
 import {
+  parseOutgoing,
   parseRoomEvent,
-  parseSpeak,
   parseUser,
+  serializeOutgoing,
   serializeRoomEvent,
-  serializeSpeak,
 } from "../src/site/wire";
 
 const identifier = { channel: "RoomChannel", room_id: "channel97" };
@@ -66,11 +66,22 @@ describe("wire translation", () => {
 
   test("round-trips the speak action", () => {
     const data = { action: "speak", message: "hi", id: "channel97", mode: "channel" };
-    const message = parseSpeak(data)!;
-    expect(message).toEqual({ room: "channel97" as never, text: "hi", picture: null });
-    expect(JSON.parse(JSON.stringify(serializeSpeak({ ...message, text: "yo" }, data)))).toEqual({
-      ...data,
-      message: "yo",
+    const message = parseOutgoing(data)!;
+    expect(message).toEqual({
+      kind: "message",
+      room: "channel97" as never,
+      text: "hi",
+      picture: null,
     });
+    expect(
+      JSON.parse(JSON.stringify(serializeOutgoing({ ...message, text: "yo" } as never, data)))
+    ).toEqual({ ...data, message: "yo" });
+  });
+
+  test("parses typing pings and leaves them untouched on the way out", () => {
+    const data = { action: "typing", id: "channel97" };
+    const event = parseOutgoing(data)!;
+    expect(event).toEqual({ kind: "typing", room: "channel97" as never });
+    expect(serializeOutgoing(event, data)).toBe(data);
   });
 });

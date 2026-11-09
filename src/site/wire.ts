@@ -1,5 +1,5 @@
 import type { CableMessage, ChannelIdentifier } from "@/platform/cable";
-import type { ChatEvent, Gender, OutgoingMessage, RoomId, User, UserId } from "./model";
+import type { ChatEvent, Gender, OutgoingEvent, RoomId, User, UserId } from "./model";
 
 /**
  * EmeraldChat's wire formats and their translation to the domain model. The only
@@ -70,16 +70,21 @@ export function serializeRoomEvent(event: ChatEvent, original: CableMessage): Ca
   return { ...original, messages: [...event.text], picture: event.picture };
 }
 
-/** The `speak` action: `{ action: "speak", message, id, mode, picture? }`. */
-export function parseSpeak(data: CableMessage): OutgoingMessage | null {
-  if (data.action !== "speak" || typeof data.id !== "string") return null;
+/** The `speak` action `{ action: "speak", message, id, mode, picture? }` and `{ action: "typing", id }`. */
+export function parseOutgoing(data: CableMessage): OutgoingEvent | null {
+  if (typeof data.id !== "string") return null;
+  const room = data.id as RoomId;
+  if (data.action === "typing") return { kind: "typing", room };
+  if (data.action !== "speak") return null;
   return {
-    room: data.id as RoomId,
+    kind: "message",
+    room,
     text: String(data.message ?? ""),
     picture: stringOrNull(data.picture),
   };
 }
 
-export function serializeSpeak(message: OutgoingMessage, original: CableMessage): CableMessage {
-  return { ...original, message: message.text, picture: message.picture ?? undefined };
+export function serializeOutgoing(event: OutgoingEvent, original: CableMessage): CableMessage {
+  if (event.kind !== "message") return original;
+  return { ...original, message: event.text, picture: event.picture ?? undefined };
 }
