@@ -1,6 +1,7 @@
 import { registerFeatures, updateEnvironment } from "./core/runtime";
 import avatarBorders from "./features/avatar-borders";
 import muteEverywhere from "./features/mute-everywhere";
+import profileViewer from "./features/profile-viewer";
 import richText from "./features/rich-text";
 import settings from "./features/settings";
 import { META } from "./meta";
@@ -14,7 +15,7 @@ import { installChatSurface } from "./site/surfaces/chat";
 import { installMessagesSurface } from "./site/surfaces/messages";
 import { startThemeEngine } from "./themes/engine";
 
-const FEATURES = [richText, muteEverywhere, avatarBorders, settings];
+const FEATURES = [richText, muteEverywhere, avatarBorders, profileViewer, settings];
 
 function boot(): void {
   // All taps must be in place before any site script runs.

@@ -9,12 +9,14 @@ import { type SiteApi, scopedSite } from "./api";
 import { type AccountMenuApi, scopedAccountMenu } from "./surfaces/accountMenu";
 import { type ChatApi, scopedChat } from "./surfaces/chat";
 import { type MessagesApi, scopedMessages } from "./surfaces/messages";
+import { type ProfilesApi, scopedProfiles } from "./surfaces/profiles";
 
 /** Everything a feature can touch. Every registration is tied to the feature's scope. */
 export interface FeatureContext<S extends SettingsSchema = SettingsSchema> {
   settings: SettingsApi<S>;
   chat: ChatApi;
   messages: MessagesApi;
+  profiles: ProfilesApi;
   ui: {
     accountMenu: AccountMenuApi;
     /** Mounts page-level UI (dialogs, panels) inside an RxE shadow root. */
@@ -44,6 +46,7 @@ export function createFeatureContext(scope: Scope, feature: AnyFeature): Feature
     settings: scopedSettings(scope, feature.id, feature.settings ?? {}),
     chat: scopedChat(scope),
     messages: scopedMessages(scope),
+    profiles: scopedProfiles(scope),
     ui: {
       accountMenu: scopedAccountMenu(scope),
       overlay: scopedOverlay(scope),

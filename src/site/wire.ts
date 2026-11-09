@@ -1,5 +1,17 @@
 import type { CableMessage, ChannelIdentifier } from "@/platform/cable";
-import type { ChatEvent, Gender, OutgoingMessage, RoomId, User, UserId } from "./model";
+import type {
+  ChatEvent,
+  Comment,
+  Gender,
+  OutgoingMessage,
+  Paged,
+  Post,
+  Profile,
+  RoomId,
+  User,
+  UserId,
+  WallId,
+} from "./model";
 
 /**
  * EmeraldChat's wire formats and their translation to the domain model. The only
@@ -23,22 +35,119 @@ const GENDERS: Record<string, Gender> = { m: "male", f: "female", o: "other" };
 
 const stringOrNull = (value: unknown): string | null => (typeof value === "string" ? value : null);
 
+function parseDate(value: unknown): Date | null {
+  if (typeof value !== "string") return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 export function parseUser(raw: unknown): User | null {
   const user = raw as RawUser | null;
   if (typeof user?.id !== "number") return null;
-  const createdAt = user.created_at ? new Date(user.created_at) : null;
   return {
     id: user.id as UserId,
     name: user.display_name ?? "",
     username: user.username ?? "",
     gender: GENDERS[user.gender ?? ""] ?? "unknown",
     karma: user.karma ?? 0,
-    createdAt: createdAt && !Number.isNaN(createdAt.getTime()) ? createdAt : null,
+    createdAt: parseDate(user.created_at),
     avatar: user.display_picture ?? null,
     flairColor: user.flair?.color || null,
     isMod: Boolean(user.mod),
     isGold: Boolean(user.gold),
   };
+}
+
+interface RawProfile extends RawUser {
+  bio?: string | null;
+  location?: string | null;
+  online?: boolean;
+  verified?: boolean;
+  last_logged_in_at?: string | null;
+  wall_id?: number | null;
+}
+
+/** `/user/profile?id=…` → `{ user: {…} }`. Other users' payloads carry `wall_id`; your own omits it. */
+export function parseProfile(raw: unknown): Profile | null {
+  const envelope = raw as { user?: unknown } | null;
+  const profile = (envelope?.user ?? raw) as RawProfile | null;
+  const user = parseUser(profile);
+  if (!user || !profile) return null;
+  return {
+    ...user,
+    bio: profile.bio ?? null,
+    location: profile.location ?? null,
+    online: Boolean(profile.online),
+    lastSeen: parseDate(profile.last_logged_in_at),
+    verified: Boolean(profile.verified),
+    wallId: typeof profile.wall_id === "number" ? (profile.wall_id as WallId) : null,
+  };
+}
+
+interface RawPost {
+  id?: number;
+  content?: string;
+  created_at?: string;
+  likes_count?: number;
+  liked?: boolean;
+  comments_count?: number;
+  author?: unknown;
+}
+
+function parsePost(raw: unknown): Post | null {
+  const post = raw as RawPost | null;
+  const author = parseUser(post?.author);
+  if (typeof post?.id !== "number" || !author) return null;
+  return {
+    id: post.id,
+    content: post.content ?? "",
+    createdAt: parseDate(post.created_at),
+    likes: post.likes_count ?? 0,
+    liked: Boolean(post.liked),
+    comments: post.comments_count ?? 0,
+    author,
+  };
+}
+
+function parseComment(raw: unknown): Comment | null {
+  const comment = raw as RawPost | null;
+  const author = parseUser(comment?.author);
+  if (typeof comment?.id !== "number" || !author) return null;
+  return {
+    id: comment.id,
+    content: comment.content ?? "",
+    createdAt: parseDate(comment.created_at),
+    likes: comment.likes_count ?? 0,
+    author,
+  };
+}
+
+interface RawPagination {
+  next_page?: number | null;
+}
+
+function parsePage<T>(
+  items: unknown,
+  pagination: unknown,
+  parse: (raw: unknown) => T | null
+): Paged<T> {
+  const list = Array.isArray(items)
+    ? items.map(parse).filter((item): item is T => item !== null)
+    : [];
+  const next = (pagination as RawPagination | null)?.next_page;
+  return { items: list, nextPage: typeof next === "number" ? next : null };
+}
+
+/** `/user/posts/v2` → `{ posts, pagination }`. */
+export function parseWall(raw: unknown): Paged<Post> {
+  const data = raw as { posts?: unknown; pagination?: unknown } | null;
+  return parsePage(data?.posts, data?.pagination, parsePost);
+}
+
+/** `/user/posts/commentsv2` → `{ comments, pagination }`. */
+export function parseComments(raw: unknown): Paged<Comment> {
+  const data = raw as { comments?: unknown; pagination?: unknown } | null;
+  return parsePage(data?.comments, data?.pagination, parseComment);
 }
 
 /** RoomChannel frames: `{ messages, picture, user }`, `{ typing, user }`, `{ user_connected, user }`, … */

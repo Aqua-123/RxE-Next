@@ -1,9 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { parseMutedUserIds } from "../src/site/prefs";
 import {
+  parseComments,
+  parseProfile,
   parseRoomEvent,
   parseSpeak,
   parseUser,
+  parseWall,
   serializeRoomEvent,
   serializeSpeak,
 } from "../src/site/wire";
@@ -72,5 +75,47 @@ describe("wire translation", () => {
       ...data,
       message: "yo",
     });
+  });
+});
+
+describe("profile and wall translation", () => {
+  test("reads another user's wall id from their profile envelope", () => {
+    const profile = parseProfile({
+      user: { ...rawUser, bio: "hi", location: "India", online: true, verified: true, wall_id: 42 },
+    });
+    expect(profile).toMatchObject({
+      id: 7,
+      bio: "hi",
+      location: "India",
+      online: true,
+      wallId: 42,
+    });
+  });
+
+  test("leaves wallId null when the site omits it (your own profile, anonymized users)", () => {
+    expect(parseProfile({ user: rawUser })?.wallId).toBeNull();
+    expect(parseProfile({ user: { display_name: "no id" } })).toBeNull();
+  });
+
+  test("parses a wall page, dropping malformed posts and reading pagination", () => {
+    const wall = parseWall({
+      posts: [
+        { id: 1, content: "a", likes_count: 3, comments_count: 1, author: rawUser },
+        { id: 2, content: "no author" },
+      ],
+      pagination: { next_page: 2 },
+    });
+    expect(wall.items).toHaveLength(1);
+    expect(wall.items[0]).toMatchObject({ id: 1, likes: 3, comments: 1 });
+    expect(wall.nextPage).toBe(2);
+  });
+
+  test("parses comments and ends pagination at a null next page", () => {
+    const page = parseComments({
+      comments: [{ id: 9, content: "yo", author: rawUser }],
+      pagination: { next_page: null },
+    });
+    expect(page.items[0]).toMatchObject({ id: 9, content: "yo" });
+    expect(page.nextPage).toBeNull();
   });
 });
