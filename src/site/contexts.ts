@@ -31,9 +31,19 @@ export function siteContext<K extends ContextName>(name: K): SiteContexts[K] | u
 
 /** Calls back once the site's React tree (and so its auth context) has mounted. */
 export function whenSiteMounted(callback: () => void): void {
+  whenTruthy(() => siteContext("auth"), callback);
+}
+
+/** Calls back once the signed-in user has loaded, which happens after the auth context mounts. */
+export function whenUserLoaded(callback: () => void): void {
+  whenTruthy(() => siteContext("auth")?.user, callback);
+}
+
+/** Re-checks as the site renders (at most once a frame) until `ready` returns something. */
+function whenTruthy(ready: () => unknown, callback: () => void): void {
   let scheduled = false;
   const check = (): boolean => {
-    if (!siteContext("auth")) return false;
+    if (!ready()) return false;
     observer.disconnect();
     callback();
     return true;

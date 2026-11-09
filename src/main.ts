@@ -20,7 +20,7 @@ import { log } from "./platform/log";
 import { currentPath, installRouteTap, onRouteChange } from "./platform/route";
 import { installWebpackTap } from "./platform/webpack";
 import { currentUser } from "./site/api";
-import { siteContext, whenSiteMounted } from "./site/contexts";
+import { siteContext, whenSiteMounted, whenUserLoaded } from "./site/contexts";
 import { installChatSurface } from "./site/surfaces/chat";
 import { installComposerSurface } from "./site/surfaces/composer";
 import { installMessagesSurface } from "./site/surfaces/messages";
@@ -67,8 +67,8 @@ function boot(): void {
   whenSiteMounted(() => {
     const transport = siteContext("cable")?.cable.transport;
     if (!cable.attached && transport) adoptTransport(transport);
-    updateEnvironment({ user: currentUser() });
   });
+  whenUserLoaded(() => updateEnvironment({ user: currentUser() }));
   log.info(`${META.name} ${META.version} loaded`);
 }
 
