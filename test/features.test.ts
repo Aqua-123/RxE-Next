@@ -5,6 +5,7 @@ import { isGif, parseImageLink } from "../src/features/inline-images/parse";
 import { compilePatterns } from "../src/features/mute-by-name";
 import { parse } from "../src/features/rich-text/parse";
 import { applyTextStyles } from "../src/features/text-styles/styles";
+import { disguiseEmails, disguiseLinks, revealEmails, revealLinks } from "../src/site/disguise";
 
 describe("chat commands", () => {
   test("expand a whole-message command, sending any text after it first", () => {
@@ -23,6 +24,42 @@ describe("chat commands", () => {
     expect(parse("¯\\_(ツ)_/¯", { links: true, spoilers: true, mentionNames: [] })).toEqual([
       { type: "text", value: "¯\\_(ツ)_/¯" },
     ]);
+  });
+});
+
+describe("disguised emails and links", () => {
+  test("emails get look-alike dots on the way out and real ones for RxE readers", () => {
+    const sent = disguiseEmails("mail me.at john.doe@mail.example.com ok.");
+    expect(sent).toBe("mail me.at john.doe@mail．example．com ok.");
+    expect(revealEmails(sent)).toBe("mail me.at john.doe@mail.example.com ok.");
+  });
+
+  test("links lose their scheme, hosts get look-alike dots and paths %2E", () => {
+    const sent = disguiseLinks(
+      "pic https://files.catbox.moe/1xv7l8.png, and youtu.be/dQw4w9WgXcQ?t=5."
+    );
+    expect(sent).toBe("pic files．catbox．moe/1xv7l8%2Epng, and youtu．be/dQw4w9WgXcQ?t=5.");
+    expect(revealLinks(sent)).toBe(
+      "pic https://files.catbox.moe/1xv7l8.png, and https://youtu.be/dQw4w9WgXcQ?t=5."
+    );
+  });
+
+  test("browsers read the disguised host as the real one", () => {
+    expect(new URL(`https://${disguiseLinks("files.catbox.moe/x.png")}`).href).toBe(
+      "https://files.catbox.moe/x%2Epng"
+    );
+  });
+
+  test("dotted words still get through, but only plausible sites come back as links", () => {
+    expect(disguiseLinks("hello.world and 3.5 end.")).toBe("hello．world and 3.5 end.");
+    expect(revealLinks("hello．world")).toBe("hello．world");
+    expect(revealLinks("youtube．com")).toBe("https://youtube.com");
+  });
+
+  test("emails are not mistaken for links in either direction", () => {
+    const sent = disguiseLinks(disguiseEmails("a.b@example.com"));
+    expect(sent).toBe("a.b@example．com");
+    expect(revealLinks(sent)).toBe(sent);
   });
 });
 

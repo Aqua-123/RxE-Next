@@ -1,6 +1,7 @@
 import { registerFeatures, updateEnvironment } from "./core/runtime";
 import avatarBorders from "./features/avatar-borders";
 import chatCommands from "./features/chat-commands";
+import emailDefang from "./features/email-defang";
 import embeds from "./features/embeds";
 import hideTyping from "./features/hide-typing";
 import inlineImages from "./features/inline-images";
@@ -8,6 +9,7 @@ import joinLeaveNotices from "./features/join-leave-notices";
 import muteByName from "./features/mute-by-name";
 import muteEverywhere from "./features/mute-everywhere";
 import richText from "./features/rich-text";
+import sendLinks from "./features/send-links";
 import settings from "./features/settings";
 import textStyles from "./features/text-styles";
 import { META } from "./meta";
@@ -24,12 +26,14 @@ import { startThemeEngine } from "./themes/engine";
 
 /**
  * Order matters: surfaces run handlers in this order. Composer transforms expand
- * commands before styling text; embeds and images claim a lone link before rich text
- * turns it into a plain link.
+ * commands, then style text (which skips links), then disguise emails and links;
+ * embeds and images claim a lone link before rich text turns it into a plain link.
  */
 const FEATURES = [
   chatCommands,
   textStyles,
+  emailDefang,
+  sendLinks,
   embeds,
   inlineImages,
   richText,
