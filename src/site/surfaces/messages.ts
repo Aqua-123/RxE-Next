@@ -5,6 +5,7 @@ import { attempt } from "@/platform/log";
 import { type SiteReact, siteReact } from "@/platform/modules";
 import { exposeSurface, type Patch, registerPatches } from "@/platform/webpack";
 import { type MountedRoot, mountRoot } from "@/ui/mount";
+import { onGenderLearned, rememberedGender } from "../genders";
 import type { RoomId, User, UserId } from "../model";
 import { parseUser } from "../wire";
 
@@ -17,7 +18,15 @@ export const AVATAR_CLASSES = {
   gender: (gender: User["gender"]) => `rxe-gender-${gender}`,
   mod: "rxe-mod",
   gold: "rxe-gold",
+  /** Lets an avatar rendered before its user's gender was known pick it up later. */
+  user: (id: UserId) => `rxe-user-${id}`,
 } as const;
+
+const GENDER_CLASS = /\brxe-gender-\w+/;
+
+function genderOf(user: User): User["gender"] {
+  return user.gender === "unknown" ? (rememberedGender(user.id) ?? "unknown") : user.gender;
+}
 
 /** One rendered chat message row in group chat. */
 const MESSAGE_ROW = '[class*="room_global_textContainer__"]';
@@ -409,7 +418,8 @@ const hooks = {
     if (!user) return AVATAR_CLASSES.root;
     return [
       AVATAR_CLASSES.root,
-      AVATAR_CLASSES.gender(user.gender),
+      AVATAR_CLASSES.user(user.id),
+      AVATAR_CLASSES.gender(genderOf(user)),
       user.isMod && AVATAR_CLASSES.mod,
       user.isGold && AVATAR_CLASSES.gold,
     ]
@@ -428,6 +438,12 @@ const hooks = {
 
 /** Registers the surface's patches. Called synchronously at boot, before chunks load. */
 export function installMessagesSurface(): void {
+  // The site re-renders with the remembered gender next time; until then, swap the class.
+  onGenderLearned((id, gender) => {
+    for (const avatar of document.getElementsByClassName(AVATAR_CLASSES.user(id))) {
+      avatar.className = avatar.className.replace(GENDER_CLASS, AVATAR_CLASSES.gender(gender));
+    }
+  });
   registerPatches("surface:messages", PATCHES);
   exposeSurface("messages", hooks);
   injectStyle("messages-flash", `.${FLASH_CLASS}{list-style:none}`);

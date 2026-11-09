@@ -123,7 +123,9 @@ and Backup.
 
 - **Themes:** see [Themes in RxE Settings](#themes-in-rxe-settings) below.
 - **Avatar borders:** rings avatars everywhere in the user's gender color, as a
-  ring or a glow, 1 to 4 px thick.
+  ring or a glow, 1 to 4 px thick. The site only sends someone's gender with
+  their live activity, so RxE remembers it once seen and shows it in the online
+  list and history too, even on later visits.
 - **Movable side panels:** on desktop, drag group chat's Channels and Online
   panels by the handle in their corner to either side of the chat, or above and
   below each other. The layout reflows live as you drag, Esc cancels, and the

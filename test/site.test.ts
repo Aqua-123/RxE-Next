@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import type { UserId } from "../src/site/model";
 import { parseMutedUserIds } from "../src/site/prefs";
 import {
   parseOutgoing,
@@ -95,5 +96,29 @@ describe("wire translation", () => {
     const event = parseOutgoing(data)!;
     expect(event).toEqual({ kind: "typing", room: "channel97" as never });
     expect(serializeOutgoing(event, data)).toBe(data);
+  });
+});
+
+describe("remembered genders", () => {
+  test("fills in genders the site left out, and announces new ones", async () => {
+    const data = new Map<string, string>();
+    globalThis.localStorage = {
+      getItem: (key: string) => data.get(key) ?? null,
+      setItem: (key: string, value: string) => void data.set(key, value),
+    } as Storage;
+    const { onGenderLearned, rememberGender, rememberedGender } = await import(
+      "../src/site/genders"
+    );
+    const learned: string[] = [];
+    onGenderLearned((id, gender) => learned.push(`${id}:${gender}`));
+
+    const id = 42 as UserId;
+    expect(rememberedGender(id)).toBeUndefined();
+    rememberGender(id, "unknown");
+    expect(rememberedGender(id)).toBeUndefined();
+    rememberGender(id, "female");
+    rememberGender(id, "female");
+    expect(rememberedGender(id)).toBe("female");
+    expect(learned).toEqual(["42:female"]);
   });
 });

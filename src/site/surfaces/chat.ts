@@ -1,8 +1,15 @@
 import { Pipeline, type Scope } from "@/core/scope";
 import { cable } from "@/platform/cable";
 import { attempt } from "@/platform/log";
+import { rememberGender } from "../genders";
 import type { ChatEvent, OutgoingEvent } from "../model";
-import { parseOutgoing, parseRoomEvent, serializeOutgoing, serializeRoomEvent } from "../wire";
+import {
+  parseOutgoing,
+  parseRoomEvent,
+  parseUser,
+  serializeOutgoing,
+  serializeRoomEvent,
+} from "../wire";
 
 /** Return from a chat handler to stop the event: incoming ones never reach the site, outgoing ones are never sent. */
 export const drop = Symbol("drop");
@@ -40,7 +47,10 @@ function runPipeline<T>(
 /** Connects the surface to the cable tap. Called once at boot. */
 export function installChatSurface(): void {
   cable.onIncoming(({ identifier, message }) => {
-    if (identifier.channel !== "RoomChannel" || incomingHandlers.size === 0) return;
+    if (identifier.channel !== "RoomChannel") return;
+    const author = parseUser(message.user);
+    if (author) rememberGender(author.id, author.gender);
+    if (incomingHandlers.size === 0) return;
     const event = parseRoomEvent(identifier, message);
     if (!event) return;
     const result = runPipeline(incomingHandlers, event);
